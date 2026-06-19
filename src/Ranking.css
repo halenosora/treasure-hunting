@@ -1,0 +1,237 @@
+.rk-screen {
+    position: fixed;
+    inset: 0;
+    background: #0a0e1a;
+    display: flex;
+    flex-direction: column;
+    z-index: 1000;
+    overflow-y: auto;
+  }
+  
+  .rk-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(0,0,0,0.5);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  .rk-back {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  
+  .rk-title {
+    color: #e8b84b;
+    font-weight: bold;
+    font-size: 16px;
+  }
+  
+  /* タブ */
+  .rk-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  
+  .rk-tab {
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #8892a4;
+    padding: 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  
+  .rk-tab.active {
+    background: rgba(232,184,75,0.15);
+    border-color: #e8b84b;
+    color: #e8b84b;
+    font-weight: bold;
+  }
+  
+  /* リスト */
+  .rk-list {
+    flex: 1;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .rk-row {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .rk-row.me {
+    background: rgba(232,184,75,0.08);
+    border-color: #e8b84b;
+  }
+  
+  .rk-row.top {
+    background: rgba(232,184,75,0.1);
+    border-color: rgba(232,184,75,0.4);
+  }
+  
+  .rk-medal {
+    width: 32px;
+    text-align: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  
+  .rk-num {
+    color: #8892a4;
+    font-size: 16px;
+    font-weight: bold;
+  }
+  
+  .rk-avatar {
+    font-size: 32px;
+    flex-shrink: 0;
+  }
+  
+  .rk-info {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .rk-name {
+    color: #e8f0ff;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 3px;
+  }
+  
+  .rk-me-badge {
+    background: #e8b84b;
+    color: #3d2800;
+    font-size: 9px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 8px;
+  }
+  
+  .rk-sub {
+    color: #8892a4;
+    font-size: 11px;
+  }
+  
+  .rk-gold {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  
+  .rk-gold-val {
+    color: #e8b84b;
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 2px;
+  }
+  
+  .rk-gold-lbl {
+    color: #8892a4;
+    font-size: 10px;
+  }
+  
+  .rk-region-note {
+    text-align: center;
+    color: #4ea0ff;
+    font-size: 12px;
+    padding: 8px;
+    background: rgba(78,160,255,0.08);
+    border-radius: 10px;
+    margin-top: 4px;
+  }
+  
+  /* 全国TOP3表彰台 */
+  .rk-top3 {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 12px;
+    padding: 20px 0 24px;
+  }
+  
+  .rk-podium {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  
+  .rk-podium.rank1 { order: 2; }
+  .rk-podium.rank2 { order: 1; }
+  .rk-podium.rank3 { order: 3; }
+  
+  .rk-podium-avatar {
+    font-size: 36px;
+  }
+  
+  .rk-podium.rank1 .rk-podium-avatar {
+    font-size: 48px;
+  }
+  
+  .rk-podium-medal {
+    font-size: 24px;
+  }
+  
+  .rk-podium-name {
+    color: #e8f0ff;
+    font-size: 11px;
+    font-weight: bold;
+    text-align: center;
+    max-width: 80px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .rk-podium-chests {
+    color: #8892a4;
+    font-size: 11px;
+  }
+  
+  /* 自分の順位（固定下部） */
+  .rk-myrank {
+    position: sticky;
+    bottom: 0;
+    background: #131929;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .rk-myrank span:first-child {
+    color: #8892a4;
+    font-size: 12px;
+  }
+  
+  .rk-myrank-val {
+    color: #e8b84b;
+    font-size: 13px;
+    font-weight: bold;
+  }

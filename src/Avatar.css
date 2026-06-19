@@ -1,0 +1,249 @@
+.av-screen {
+  position: fixed;
+  inset: 0;
+  background: #0a0e1a;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  overflow-y: auto;
+}
+
+.av-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(0,0,0,0.5);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.av-back {
+  background: rgba(255,255,255,0.1);
+  border: none;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.av-title {
+  color: #e8b84b;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.av-save {
+  background: #e8b84b;
+  border: none;
+  color: #3d2800;
+  padding: 6px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+/* プレビュー */
+.av-preview-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 20px 16px 12px;
+}
+
+.av-preview-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 16px;
+  text-align: center;
+  width: 100%;
+  max-width: 340px;
+}
+
+.av-preview-bg {
+  width: 100px;
+  height: 110px;
+  border-radius: 20px;
+  margin: 0 auto 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 2px solid #e8b84b;
+  background: #1a2235;
+  gap: 2px;
+}
+
+.av-preview-hat { font-size: 22px; line-height: 1; }
+.av-preview-face { font-size: 34px; line-height: 1; }
+.av-preview-bottom { font-size: 18px; display: flex; gap: 4px; }
+.av-preview-acc {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 14px;
+  display: flex;
+  gap: 2px;
+}
+
+.av-preview-name {
+  color: #e8b84b;
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.av-preview-stats {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.av-preview-stats span {
+  color: #8892a4;
+  font-size: 11px;
+}
+
+.av-equipped-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  text-align: left;
+}
+
+.av-equipped-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.av-equipped-name {
+  color: #8892a4;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* カテゴリタブ */
+.av-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 16px 12px;
+  overflow-x: auto;
+}
+
+.av-tab {
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #8892a4;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 12px;
+  position: relative;
+}
+
+.av-tab.active {
+  background: rgba(232,184,75,0.15);
+  border-color: #e8b84b;
+  color: #e8b84b;
+  font-weight: bold;
+}
+
+.av-tab-dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  background: #e8b84b;
+  border-radius: 50%;
+}
+
+/* アイテムグリッド */
+.av-items-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 0 16px 32px;
+}
+
+.av-item-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.av-item-card:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(232,184,75,0.3);
+}
+
+.av-item-card.equipped {
+  border-color: #e8b84b;
+  background: rgba(232,184,75,0.08);
+}
+
+.av-item-emoji {
+  font-size: 36px;
+  margin-bottom: 6px;
+}
+
+.av-item-rarity {
+  font-size: 10px;
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+
+.av-item-name {
+  color: #e8f0ff;
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+
+.av-item-source {
+  color: #8892a4;
+  font-size: 10px;
+}
+
+.av-item-equipped-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #e8b84b;
+  color: #3d2800;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+.av-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px;
+  color: #8892a4;
+}
+
+.av-empty p:first-child {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.av-empty p:last-child {
+  font-size: 13px;
+}

@@ -1,0 +1,48 @@
+export type ItemCategory = '帽子' | '服' | 'シューズ' | 'アクセサリー' | '武器';
+export type ItemRarity = 'コモン' | 'レア' | 'エピック' | '限定';
+
+export interface Item {
+  id: string;
+  name: string;
+  category: ItemCategory;
+  rarity: ItemRarity;
+  emoji: string;
+  description: string;
+  source: string; // どこで入手できるか
+}
+
+// ご当地アイテム
+export const LOCAL_ITEMS: Item[] = [
+  { id: 'imabari_towel', name: '今治タオルマフラー', category: 'アクセサリー', rarity: 'レア', emoji: '🧣', description: '今治の職人が織った最高級タオル', source: '愛媛県・今治エリア' },
+  { id: 'nishijin_kimono', name: '西陣織の着物', category: '服', rarity: 'エピック', emoji: '👘', description: '京都西陣の伝統工芸品', source: '京都府・西陣エリア' },
+  { id: 'kurashiki_denim', name: '倉敷デニムジャケット', category: '服', rarity: 'レア', emoji: '🧥', description: '備中の藍染めデニム', source: '岡山県・倉敷エリア' },
+  { id: 'kyoto_kasa', name: '舞妓の傘', category: '帽子', rarity: 'エピック', emoji: '☂️', description: '京都祇園限定の和傘', source: '京都府・祇園エリア' },
+  { id: 'osaka_happi', name: '大阪祭りハッピ', category: '服', rarity: 'コモン', emoji: '🎽', description: '大阪の祭りで着る法被', source: '大阪府・天神橋エリア' },
+  { id: 'asakusa_headband', name: '浅草鉢巻き', category: '帽子', rarity: 'コモン', emoji: '🎌', description: '浅草の祭り限定アイテム', source: '東京都・浅草エリア' },
+  { id: 'nikko_armor', name: '日光武将の兜', category: '帽子', rarity: 'エピック', emoji: '⛩️', description: '日光東照宮の武将コスチューム', source: '栃木県・日光エリア' },
+  { id: 'hawaii_aloha', name: 'ハワイアロハシャツ', category: '服', rarity: 'レア', emoji: '🌺', description: 'ホノルル限定アロハ', source: 'ハワイ・ホノルルエリア' },
+  { id: 'okinawa_sango', name: '沖縄サンゴのネックレス', category: 'アクセサリー', rarity: 'レア', emoji: '🪸', description: '沖縄の海で採れたサンゴ', source: '沖縄県・那覇エリア' },
+  { id: 'hokkaido_fur', name: '北海道ファーコート', category: '服', rarity: 'エピック', emoji: '🧤', description: '北海道の冬限定コート', source: '北海道・札幌エリア' },
+];
+
+// 企業コラボアイテム
+export const COLLAB_ITEMS: Item[] = [
+  { id: 'nike_shoes', name: 'NIKEエアマックス', category: 'シューズ', rarity: '限定', emoji: '👟', description: 'NIKE購入者限定デジタルシューズ', source: 'NIKE直営店' },
+  { id: 'adidas_shoes', name: 'ADIDASスタンスミス', category: 'シューズ', rarity: '限定', emoji: '👟', description: 'ADIDAS購入者限定', source: 'ADIDAS直営店' },
+  { id: 'starbucks_hat', name: 'スタバ限定グリーンハット', category: '帽子', rarity: 'レア', emoji: '🎩', description: 'スターバックス来店記念', source: 'スターバックス各店' },
+  { id: 'uniqlo_fleece', name: 'ユニクロフリース', category: '服', rarity: 'コモン', emoji: '🧥', description: 'ユニクロ来店記念アイテム', source: 'ユニクロ各店' },
+  { id: 'nintendo_hat', name: 'マリオキャップ', category: '帽子', rarity: '限定', emoji: '🍄', description: '任天堂コラボ限定', source: '任天堂直営店' },
+];
+
+// 初期から持っているアイテム
+export const DEFAULT_ITEMS: Item[] = [
+  { id: 'default_hat', name: '冒険者の帽子', category: '帽子', rarity: 'コモン', emoji: '🎩', description: '旅の始まりに贈られた帽子', source: '初期装備' },
+  { id: 'default_sword', name: '木の剣', category: '武器', rarity: 'コモン', emoji: '🗡️', description: '最初の武器', source: '初期装備' },
+];
+
+export const RARITY_COLORS: Record<ItemRarity, string> = {
+  'コモン': '#8892a4',
+  'レア': '#4ea0ff',
+  'エピック': '#a855f7',
+  '限定': '#e8b84b',
+};
