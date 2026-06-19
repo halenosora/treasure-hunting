@@ -1,13 +1,19 @@
 import ARCamera from './ARCamera';
 import Avatar from './Avatar';
-import React, { useMemo, useState } from 'react';
 import Ranking from './Ranking';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import './App.css';
 
 type NavItem = 'map' | 'ar' | 'avatar' | 'rank' | 'item';
-type TreasureType = '神社' | '城' | '企業コラボ';
+
+type TreasureType =
+  | '地域クーポン'
+  | 'ゲームアイテム'
+  | 'スポンサード'
+  | '期間限定'
+  | 'レジェンド';
 
 interface TreasureChest {
   id: number;
@@ -15,34 +21,69 @@ interface TreasureChest {
   type: TreasureType;
   lat: number;
   lng: number;
-  icon: string;
 }
 
 interface RewardResult {
   itemName: string;
   gold: number;
   treasureName: string;
+  type: TreasureType;
 }
 
-const MAP_CENTER: [number, number] = [34.6873, 135.5262];
-const MAP_ZOOM = 12;
-
-const MARKER_COLORS: Record<TreasureType, string> = {
-  神社: '#22c55e',
-  城: '#f97316',
-  企業コラボ: '#eab308',
+const TREASURE_CONFIG: Record<TreasureType, {
+  color: string;
+  emoji: string;
+  shape: string;
+  label: string;
+  items: string[];
+}> = {
+  地域クーポン: {
+    color: '#22c55e',
+    emoji: '🟢',
+    shape: 'circle',
+    label: '地域クーポン',
+    items: ['地域振興券500円', '観光割引クーポン', '飲食店10%オフ', '温泉入浴券'],
+  },
+  ゲームアイテム: {
+    color: '#3b82f6',
+    emoji: '🔵',
+    shape: 'square',
+    label: 'ゲームアイテム',
+    items: ['強化石', '経験値アップ薬', '魔法の地図', 'HP回復ポーション'],
+  },
+  スポンサード: {
+    color: '#e8b84b',
+    emoji: '⭐',
+    shape: 'star',
+    label: 'スポンサード',
+    items: ['NIKEシューズNFT', 'スタバ限定NFT', 'コラボ限定バッジ', '企業限定クーポン'],
+  },
+  期間限定: {
+    color: '#a855f7',
+    emoji: '💜',
+    shape: 'diamond',
+    label: '期間限定',
+    items: ['ハロウィン魔女帽', '正月金の鏡餅', 'クリスマスベル', '夏祭り花火'],
+  },
+  レジェンド: {
+    color: '#ef4444',
+    emoji: '👑',
+    shape: 'crown',
+    label: 'レジェンド',
+    items: ['伝説の剣NFT', '黄金の鎧NFT', 'ドラゴンの翼NFT', '神々の指輪NFT'],
+  },
 };
 
-const ITEMS_BY_TYPE: Record<TreasureType, string[]> = {
-  神社: ['黄金の御守り', '稲荷のお札', '幸運の鈴', '神樹の実'],
-  城: ['城主の印章', '武将の兜', '秘伝の地図', '黄金の短刀'],
-  企業コラボ: ['限定クーポン500円', 'スター特典カード', '限定ドリンク券', 'コラボステッカー'],
-};
+const DEFAULT_CENTER: [number, number] = [34.6873, 135.5262];
+const MIN_ZOOM = 15;
+const DEFAULT_ZOOM = 15;
 
 const treasures: TreasureChest[] = [
-  { id: 1, name: '伏見稲荷大社', type: '神社', lat: 34.9671, lng: 135.7727, icon: '⛩️' },
-  { id: 2, name: '大阪城', type: '城', lat: 34.6873, lng: 135.5262, icon: '🏯' },
-  { id: 3, name: 'スターバックス心斎橋', type: '企業コラボ', lat: 34.6722, lng: 135.5017, icon: '🤝' },
+  { id: 1, name: '地域クーポン宝箱', type: '地域クーポン', lat: 35.5285, lng: 139.5760 },
+  { id: 2, name: 'アイテム宝箱', type: 'ゲームアイテム', lat: 35.5270, lng: 139.5780 },
+  { id: 3, name: 'NIKEコラボ宝箱', type: 'スポンサード', lat: 35.5295, lng: 139.5740 },
+  { id: 4, name: 'ハロウィン宝箱', type: '期間限定', lat: 35.5265, lng: 139.5755 },
+  { id: 5, name: '伝説の宝庫', type: 'レジェンド', lat: 35.5290, lng: 139.5765 },
 ];
 
 const navItems: { key: NavItem; label: string; icon: string }[] = [
@@ -53,33 +94,46 @@ const navItems: { key: NavItem; label: string; icon: string }[] = [
   { key: 'item', label: 'アイテム', icon: '🎒' },
 ];
 
-const markerIconCache = new Map<TreasureType, L.Icon>();
+function createTreasureIcon(type: TreasureType): L.DivIcon {
+  const cfg = TREASURE_CONFIG[type];
+  let shape = '';
+  if (cfg.shape === 'circle') {
+    shape = `<circle cx="16" cy="16" r="13" fill="${cfg.color}" stroke="#fff" stroke-width="2"/>`;
+  } else if (cfg.shape === 'square') {
+    shape = `<rect x="3" y="3" width="26" height="26" rx="4" fill="${cfg.color}" stroke="#fff" stroke-width="2"/>`;
+  } else if (cfg.shape === 'star') {
+    shape = `<polygon points="16,2 20,12 31,12 22,19 25,30 16,23 7,30 10,19 1,12 12,12" fill="${cfg.color}" stroke="#fff" stroke-width="1.5"/>`;
+  } else if (cfg.shape === 'diamond') {
+    shape = `<polygon points="16,2 30,16 16,30 2,16" fill="${cfg.color}" stroke="#fff" stroke-width="2"/>`;
+  } else if (cfg.shape === 'crown') {
+    shape = `<polygon points="2,26 2,12 8,18 16,6 24,18 30,12 30,26" fill="${cfg.color}" stroke="#fff" stroke-width="2"/>`;
+  }
 
-function createMarkerIcon(type: TreasureType): L.Icon {
-  const cached = markerIconCache.get(type);
-  if (cached) return cached;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">${shape}</svg>`;
 
-  const color = MARKER_COLORS[type];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42">
-    <path fill="${color}" stroke="#ffffff" stroke-width="1.5" d="M16 0C7.2 0 0 7.2 0 16c0 12 16 26 16 26s16-14 16-26C32 7.2 24.8 0 16 0z"/>
-    <rect x="9" y="9" width="14" height="11" rx="2" fill="#ffffff"/>
-    <rect x="11" y="7" width="10" height="4" rx="1" fill="#ffffff"/>
-  </svg>`;
-
-  const icon = L.icon({
-    iconUrl: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-    iconSize: [32, 42],
-    iconAnchor: [16, 42],
-    popupAnchor: [0, -42],
+  return L.divIcon({
+    className: `chest-marker chest-marker--${cfg.shape}`,
+    html: `<div class="chest-marker-wrap">${svg}</div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
   });
-
-  markerIconCache.set(type, icon);
-  return icon;
 }
 
-function calcDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+function createPlayerIcon(): L.DivIcon {
+  return L.divIcon({
+    className: '',
+    html: `<div class="player-marker"><div class="player-marker__ring"></div><div class="player-marker__dot"></div></div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+  });
+}
+
+function calcDistanceMeters(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number
+): number {
   const R = 6371000;
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLng = toRad(lng2 - lng1);
   const a =
@@ -88,21 +142,42 @@ function calcDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: numb
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters)}m`;
-  return `${(meters / 1000).toFixed(1)}km`;
+function formatDistance(m: number): string {
+  return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`;
 }
 
-function randomItem(type: TreasureType): string {
-  const items = ITEMS_BY_TYPE[type];
-  return items[Math.floor(Math.random() * items.length)];
+function MapController({
+  center,
+}: {
+  center: [number, number] | null;
+  northUp: boolean;
+  heading: number;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.setMinZoom(MIN_ZOOM);
+  }, [map]);
+
+  useEffect(() => {
+    if (center) map.setView(center, map.getZoom());
+  }, [center, map]);
+
+  return null;
 }
 
-function randomGold(): number {
-  return Math.floor(Math.random() * 401) + 100;
+function randomGold(type: TreasureType): number {
+  const base: Record<TreasureType, number> = {
+    地域クーポン: 200,
+    ゲームアイテム: 150,
+    スポンサード: 500,
+    期間限定: 350,
+    レジェンド: 1000,
+  };
+  return base[type] + Math.floor(Math.random() * 200);
 }
 
-function App() {
+export default function App() {
   const [activeNav, setActiveNav] = useState<NavItem>('map');
   const [totalGold, setTotalGold] = useState(0);
   const [goldPulse, setGoldPulse] = useState(false);
@@ -111,98 +186,180 @@ function App() {
   const [showAR, setShowAR] = useState(false);
   const [showAvatar, setShowAvatar] = useState(false);
   const [showRanking, setShowRanking] = useState(false);
+  const [playerPos, setPlayerPos] = useState<[number, number] | null>(null);
+  const [northUp, setNorthUp] = useState(true);
+  const [heading, setHeading] = useState(0);
+  const watchIdRef = useRef<number | null>(null);
 
-  const treasuresWithDistance = useMemo(
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => setPlayerPos([pos.coords.latitude, pos.coords.longitude]),
+      () => {},
+      { enableHighAccuracy: true, distanceFilter: 5 } as any,
+    );
+    return () => {
+      if (watchIdRef.current !== null)
+        navigator.geolocation.clearWatch(watchIdRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: DeviceOrientationEvent) => {
+      const alpha = (e as any).webkitCompassHeading ?? e.alpha;
+      if (alpha !== null) setHeading(alpha);
+    };
+    window.addEventListener('deviceorientation', handler);
+    return () => window.removeEventListener('deviceorientation', handler);
+  }, []);
+
+  const mapCenter = playerPos ?? DEFAULT_CENTER;
+
+  const treasuresWithDist = useMemo(
     () =>
-      treasures.map((treasure) => ({
-        ...treasure,
+      treasures.map((t) => ({
+        ...t,
         distance: formatDistance(
-          calcDistanceMeters(MAP_CENTER[0], MAP_CENTER[1], treasure.lat, treasure.lng),
+          calcDistanceMeters(mapCenter[0], mapCenter[1], t.lat, t.lng),
         ),
-      })),
-    [],
+        distanceM: calcDistanceMeters(mapCenter[0], mapCenter[1], t.lat, t.lng),
+      })).sort((a, b) => a.distanceM - b.distanceM),
+    [mapCenter],
   );
 
-  const handleOpenTreasure = (treasure: TreasureChest) => {
+  const handleOpenTreasure = useCallback((t: TreasureChest) => {
     setModalRevealed(false);
+    const cfg = TREASURE_CONFIG[t.type];
     setRewardModal({
-      itemName: randomItem(treasure.type),
-      gold: randomGold(),
-      treasureName: treasure.name,
+      itemName: cfg.items[Math.floor(Math.random() * cfg.items.length)],
+      gold: randomGold(t.type),
+      treasureName: t.name,
+      type: t.type,
     });
-    window.setTimeout(() => setModalRevealed(true), 900);
-  };
+    setTimeout(() => setModalRevealed(true), 900);
+  }, []);
 
-  const handleClaimReward = () => {
+  const handleClaimReward = useCallback(() => {
     if (!rewardModal) return;
-
-    setTotalGold((prev) => prev + rewardModal.gold);
+    setTotalGold((p) => p + rewardModal.gold);
     setGoldPulse(true);
-    window.setTimeout(() => setGoldPulse(false), 600);
+    setTimeout(() => setGoldPulse(false), 600);
     setRewardModal(null);
     setModalRevealed(false);
-  };
+  }, [rewardModal]);
 
   return (
     <div className="app">
-    {showAR && <ARCamera onClose={() => setShowAR(false)} />}
-    {showAvatar && <Avatar onClose={() => setShowAvatar(false)} />}
-    {showRanking && <Ranking onClose={() => setShowRanking(false)} />}
+      {showAR && <ARCamera onClose={() => setShowAR(false)} />}
+      {showAvatar && <Avatar onClose={() => setShowAvatar(false)} />}
+      {showRanking && <Ranking onClose={() => setShowRanking(false)} />}
+
       <header className="title-bar">
         <h1 className="title-bar__heading">たからさがし</h1>
         <div className={`title-bar__gold${goldPulse ? ' title-bar__gold--pulse' : ''}`}>
-          <span className="title-bar__gold-icon" aria-hidden="true">💰</span>
-          <span className="title-bar__gold-value">{totalGold.toLocaleString()} G</span>
+          <span aria-hidden="true">💰</span>
+          <span>{totalGold.toLocaleString()} G</span>
         </div>
       </header>
 
       <main className="main-content">
         <section className="map-area" aria-label="地図">
-          <MapContainer center={MAP_CENTER} zoom={MAP_ZOOM} scrollWheelZoom>
+          <MapContainer
+            center={mapCenter}
+            zoom={DEFAULT_ZOOM}
+            minZoom={MIN_ZOOM}
+            maxZoom={19}
+            scrollWheelZoom
+            style={{ width: '100%', height: '100%' }}
+          >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {treasures.map((treasure) => (
-              <Marker
-                key={treasure.id}
-                position={[treasure.lat, treasure.lng]}
-                icon={createMarkerIcon(treasure.type)}
-              >
+            <MapController center={playerPos} northUp={northUp} heading={heading} />
+
+            {playerPos && (
+              <Marker position={playerPos} icon={createPlayerIcon()}>
+                <Popup>現在地</Popup>
+              </Marker>
+            )}
+
+            {treasures.map((t) => (
+              <Marker key={t.id} position={[t.lat, t.lng]} icon={createTreasureIcon(t.type)}>
                 <Popup>
-                  <strong>{treasure.name}</strong>
-                  <br />
-                  {treasure.type}
+                  <div style={{ textAlign: 'center', minWidth: 120 }}>
+                    <div style={{ fontSize: 22 }}>{TREASURE_CONFIG[t.type].emoji}</div>
+                    <strong>{t.name}</strong>
+                    <div style={{ fontSize: 11, color: TREASURE_CONFIG[t.type].color, marginBottom: 6 }}>
+                      {TREASURE_CONFIG[t.type].label}
+                    </div>
+                    <button
+                      onClick={() => setShowAR(true)}
+                      style={{
+                        background: '#e8b84b', border: 'none', borderRadius: 8,
+                        padding: '6px 14px', fontWeight: 'bold', cursor: 'pointer', width: '100%',
+                      }}
+                    >
+                      📷 ARで開ける
+                    </button>
+                  </div>
                 </Popup>
               </Marker>
             ))}
           </MapContainer>
+
+          <div className="map-controls">
+            <button
+              className={`map-controls__compass ${northUp ? 'active' : ''}`}
+              onClick={() => setNorthUp((v) => !v)}
+              title={northUp ? '北固定中' : '方角追従中'}
+            >
+              {northUp ? '🧭 北固定' : '📍 方角追従'}
+            </button>
+            <button
+              className="map-controls__location"
+              onClick={() => playerPos && setPlayerPos([...playerPos])}
+              title="現在地に戻る"
+            >
+              📍
+            </button>
+          </div>
         </section>
 
         <section className="treasure-list" aria-label="近くの宝箱">
           <h2 className="treasure-list__heading">近くの宝箱</h2>
           <ul className="treasure-list__items">
-            {treasuresWithDistance.map((treasure) => (
-              <li key={treasure.id} className="treasure-card">
-                <span className="treasure-card__icon" aria-hidden="true">
-                  {treasure.icon}
-                </span>
-                <div className="treasure-card__info">
-                  <span className="treasure-card__name">{treasure.name}</span>
-                  <span className={`treasure-card__type treasure-card__type--${treasure.type}`}>
-                    {treasure.type}
+            {treasuresWithDist.map((t) => {
+              const cfg = TREASURE_CONFIG[t.type];
+              return (
+                <li key={t.id} className="treasure-card">
+                  <span
+                    className="treasure-card__icon"
+                    style={{ color: cfg.color }}
+                    aria-hidden="true"
+                  >
+                    {cfg.emoji}
                   </span>
-                  <span className="treasure-card__distance">{treasure.distance}</span>
-                </div>
-                <button
-                  type="button"
-                  className="treasure-card__open-btn"
-                  onClick={() => handleOpenTreasure(treasure)}
-                >
-                  開ける
-                </button>
-              </li>
-            ))}
+                  <div className="treasure-card__info">
+                    <span className="treasure-card__name">{t.name}</span>
+                    <span
+                      className="treasure-card__type"
+                      style={{ color: cfg.color }}
+                    >
+                      {cfg.label}
+                    </span>
+                    <span className="treasure-card__distance">{t.distance}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="treasure-card__open-btn"
+                    onClick={() => handleOpenTreasure(t)}
+                  >
+                    開ける
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </section>
       </main>
@@ -221,9 +378,7 @@ function App() {
             }}
             aria-current={activeNav === item.key ? 'page' : undefined}
           >
-            <span className="bottom-nav__icon" aria-hidden="true">
-              {item.icon}
-            </span>
+            <span aria-hidden="true">{item.icon}</span>
             <span className="bottom-nav__label">{item.label}</span>
           </button>
         ))}
@@ -231,28 +386,25 @@ function App() {
 
       {rewardModal && (
         <div className="reward-overlay" role="presentation">
-          <div
-            className="reward-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="reward-modal-title"
-          >
+          <div className="reward-modal" role="dialog" aria-modal="true" aria-labelledby="reward-modal-title">
             <p className="reward-modal__source">{rewardModal.treasureName}</p>
+            <div
+              className="reward-modal__type-badge"
+              style={{ color: TREASURE_CONFIG[rewardModal.type].color }}
+            >
+              {TREASURE_CONFIG[rewardModal.type].emoji} {TREASURE_CONFIG[rewardModal.type].label}
+            </div>
 
             <div className="chest-scene">
               <div className="chest chest--opening">
                 <div className="chest__shadow" />
-                <div className="chest__body">
-                  <div className="chest__lock" />
-                </div>
+                <div className="chest__body"><div className="chest__lock" /></div>
                 <div className="chest__lid">
                   <div className="chest__lid-top" />
                   <div className="chest__lid-front" />
                 </div>
                 <div className="chest__sparkles" aria-hidden="true">
-                  <span>✨</span>
-                  <span>⭐</span>
-                  <span>✨</span>
+                  <span>✨</span><span>⭐</span><span>✨</span>
                 </div>
               </div>
             </div>
@@ -271,5 +423,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
