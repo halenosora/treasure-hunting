@@ -351,19 +351,15 @@ useEffect(() => {
   // ── レンダー ───────────────────────────────────────────────
   return (
     <div className="app">
-    {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
 
-      {/* ── モーダル類 ── */}
-      {/* ── フルスクリーン（ボトムナビの上に重ねない） ── */}
+      {/* フルスクリーン（ボトムナビの上） */}
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
       {showAR && (
         <ARCamera
-          onClose={() => { setShowAR(false); setActiveNav('map'); }}
+          onClose={() => setShowAR(false)}
           chest={selectedChest ? {
-            id: selectedChest.id,
-            name: selectedChest.name,
-            type: selectedChest.type,
-            lat: selectedChest.lat,
-            lng: selectedChest.lng,
+            id: selectedChest.id, name: selectedChest.name, type: selectedChest.type,
+            lat: selectedChest.lat, lng: selectedChest.lng,
             gold_amount: selectedChest.gold_amount,
             unlock_mode: (selectedChest as any).unlock_mode ?? 'gps',
             appear_radius: (selectedChest as any).appear_radius ?? 50,
@@ -372,8 +368,7 @@ useEffect(() => {
           playerPos={playerPos}
           onClaim={(gold) => {
             const newGold = totalGold + gold;
-            setTotalGold(newGold);
-            setGoldPulse(true);
+            setTotalGold(newGold); setGoldPulse(true);
             setTimeout(() => setGoldPulse(false), 600);
             if (user) supabase.from('profiles').update({ gold: newGold }).eq('id', user.id);
           }}
@@ -394,82 +389,56 @@ useEffect(() => {
           </div>
           <button className="title-bar__logout" onClick={handleLogout}>ログアウト</button>
           {profile?.is_admin && (
-  <button className="title-bar__logout" onClick={() => setShowAdmin(true)}>⚙️ 管理</button>
-)}
+            <button className="title-bar__logout" onClick={() => setShowAdmin(true)}>⚙️ 管理</button>
+          )}
         </div>
       </header>
 
-      {/* ── メインコンテンツ ── */}
+      {/* ── メインコンテンツ（ページ切替） ── */}
       <main className="main-content">
+
         {/* 地図 */}
-        <section className="map-area" aria-label="地図" style={{ display: activeNav === 'map' ? 'block' : 'none' }}>>
-          <MapContainer
-            center={mapCenter}
-            zoom={DEFAULT_ZOOM}
-            minZoom={MIN_ZOOM}
-            maxZoom={19}
-            scrollWheelZoom
-            style={{ width: '100%', height: '100%' }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+        <section className="map-area" aria-label="地図" style={{ display: activeNav === 'map' ? 'block' : 'none', position:'absolute', inset:0 }}>
+          <MapContainer center={mapCenter} zoom={DEFAULT_ZOOM} minZoom={MIN_ZOOM} maxZoom={19} scrollWheelZoom style={{ width:'100%', height:'100%' }}>
+            <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapController center={playerPos} northUp heading={0} />
-
-            {playerPos && (
-              <Marker position={playerPos} icon={createPlayerIcon()}>
-                <Popup>現在地</Popup>
-              </Marker>
-            )}
-
+            {playerPos && <Marker position={playerPos} icon={createPlayerIcon()}><Popup>現在地</Popup></Marker>}
             {treasures.map((t) => (
-              <Marker
-                key={t.id}
-                position={[t.lat, t.lng]}
-                icon={createTreasureIcon(t.type)}
-                eventHandlers={{ click: () => setSelectedChest(t) }}
-              />
+              <Marker key={t.id} position={[t.lat, t.lng]} icon={createTreasureIcon(t.type)} eventHandlers={{ click: () => setSelectedChest(t) }} />
             ))}
           </MapContainer>
+        </section>
+
+        {/* マイページ */}
+        <section style={{ display: activeNav === 'avatar' ? 'flex' : 'none', position:'absolute', inset:0, flexDirection:'column', overflowY:'auto', background:'#0a0e1a' }}>
+          <Avatar onClose={() => setActiveNav('map')} />
+        </section>
+
+        {/* ランク */}
+        <section style={{ display: activeNav === 'rank' ? 'flex' : 'none', position:'absolute', inset:0, flexDirection:'column', overflowY:'auto', background:'#0a0e1a' }}>
+          <Ranking onClose={() => setActiveNav('map')} />
+        </section>
+
+        {/* アイテム */}
+        {activeNav === 'item' && user && (
+          <section style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', overflowY:'auto', background:'#0a0e1a' }}>
+            <Items userId={user.id} onClose={() => setActiveNav('map')} />
           </section>
+        )}
 
-{/* マイページ */}
-{activeNav === 'avatar' && (
-  <div style={{ position:'absolute', inset:0, overflowY:'auto', background:'#0a0e1a' }}>
-    <Avatar onClose={() => setActiveNav('map')} />
-  </div>
-)}
+      </main>
 
-{/* ランク */}
-{activeNav === 'rank' && (
-  <div style={{ position:'absolute', inset:0, overflowY:'auto', background:'#0a0e1a' }}>
-    <Ranking onClose={() => setActiveNav('map')} />
-  </div>
-)}
-
-{/* アイテム */}
-{activeNav === 'item' && user && (
-  <div style={{ position:'absolute', inset:0, overflowY:'auto', background:'#0a0e1a' }}>
-    <Items userId={user.id} onClose={() => setActiveNav('map')} />
-  </div>
-)}
-</main>
-
-      {/* ── ナビゲーション ── */}
-      <nav className="bottom-nav" aria-label="メインナビゲーション">
+      {/* ── ボトムナビ（常に最前面） ── */}
+      <nav className="bottom-nav" aria-label="メインナビゲーション" style={{ position:'relative', zIndex:1000, flexShrink:0 }}>
         {navItems.map((item) => {
           const active = activeNav === item.key;
           const color  = active ? '#e8b84b' : '#4a5268';
           return (
-            <button
-              key={item.key}
-              type="button"
+            <button key={item.key} type="button"
               className={`bottom-nav__item${active ? ' bottom-nav__item--active' : ''}`}
               onClick={() => handleNavClick(item.key)}
               aria-current={active ? 'page' : undefined}
             >
-              {/* ── アイコン（差し替え時はここのSVGを変えるだけ） ── */}
               {item.key === 'map' && (
                 <svg width="28" height="28" viewBox="0 0 24 24" style={{ overflow:'visible' }}>
                   <circle cx="12" cy="12" r="10" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -504,15 +473,10 @@ useEffect(() => {
                   <line x1="12" y1="15" x2="12" y2="18" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
                   <rect x="8" y="18" width="8" height="2" rx="1" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
                   <text x="12" y="12" textAnchor="middle" fontSize="5" fill={color} fontFamily="Georgia">★</text>
-                  {active && <>
-                    <line x1="5"  y1="3" x2="4"  y2="2" stroke={color} strokeWidth="0.8" strokeLinecap="round" style={{ animation:'trophyShine 1.5s ease-in-out infinite' }}/>
-                    <line x1="19" y1="3" x2="20" y2="2" stroke={color} strokeWidth="0.8" strokeLinecap="round" style={{ animation:'trophyShine 1.5s ease-in-out infinite 0.3s' }}/>
-                    <line x1="12" y1="3" x2="12" y2="1.5" stroke={color} strokeWidth="0.8" strokeLinecap="round" style={{ animation:'trophyShine 1.5s ease-in-out infinite 0.6s' }}/>
-                  </>}
                 </svg>
               )}
               {item.key === 'item' && (
-                <svg width="28" height="28" viewBox="0 0 24 24" style={{ animation: active ? 'packBounce 2s ease-in-out infinite' : 'none' }}>
+                <svg width="28" height="28" viewBox="0 0 24 24">
                   <rect x="6" y="8" width="12" height="13" rx="3" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M9,8 Q9,4 12,4 Q15,4 15,8" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
                   <rect x="8" y="13" width="8" height="5" rx="1.5" fill="none" stroke={color} strokeWidth="1" strokeLinecap="round"/>
@@ -525,30 +489,23 @@ useEffect(() => {
           );
         })}
       </nav>
-      <style>{`
-        @keyframes compassSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        @keyframes trophyShine { 0%,100%{opacity:0.3} 50%{opacity:1} }
-        @keyframes packBounce  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
-      `}</style>
 
       {/* ── 宝箱詳細 ── */}
       {selectedChest && (
         <div className="chest-detail-overlay" onClick={() => setSelectedChest(null)}>
           <div className="chest-detail-card" onClick={e => e.stopPropagation()}>
             <button className="chest-detail-close" onClick={() => setSelectedChest(null)}>✕</button>
-
-            <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 16px' }}>
+            <div style={{ display:'flex', justifyContent:'center', margin:'8px 0 16px' }}>
               <div style={{
-                width: 64, height: 64, borderRadius: '50%',
-                background: `radial-gradient(circle at 35% 35%, ${TREASURE_CONFIG[selectedChest.type].color}ff, ${TREASURE_CONFIG[selectedChest.type].color}66)`,
-                border: `2px solid ${TREASURE_CONFIG[selectedChest.type].color}`,
-                boxShadow: `0 0 24px ${TREASURE_CONFIG[selectedChest.type].color}99, 0 0 48px ${TREASURE_CONFIG[selectedChest.type].color}44`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width:64, height:64, borderRadius:'50%',
+                background:`radial-gradient(circle at 35% 35%, ${TREASURE_CONFIG[selectedChest.type].color}ff, ${TREASURE_CONFIG[selectedChest.type].color}66)`,
+                border:`2px solid ${TREASURE_CONFIG[selectedChest.type].color}`,
+                boxShadow:`0 0 24px ${TREASURE_CONFIG[selectedChest.type].color}99, 0 0 48px ${TREASURE_CONFIG[selectedChest.type].color}44`,
+                display:'flex', alignItems:'center', justifyContent:'center',
               }}>
-                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'white', opacity: 0.85, boxShadow: '0 0 8px white' }} />
+                <div style={{ width:24, height:24, borderRadius:'50%', background:'white', opacity:0.85, boxShadow:'0 0 8px white' }} />
               </div>
             </div>
-
             <h2 className="chest-detail-name">{selectedChest.name}</h2>
             <div className="chest-detail-type" style={{ color: TREASURE_CONFIG[selectedChest.type].color }}>
               {TREASURE_CONFIG[selectedChest.type].label}
@@ -556,56 +513,30 @@ useEffect(() => {
             <div className="chest-detail-dist">
               📍 現在地から {treasuresWithDist.find(t => t.id === selectedChest.id)?.distance ?? '---'}
             </div>
-
             {selectedChest.shop_photo && (
-              <div style={{ margin: '12px 0', borderRadius: 12, overflow: 'hidden', height: 140 }}>
-                <img src={selectedChest.shop_photo} alt={selectedChest.shop_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ margin:'12px 0', borderRadius:12, overflow:'hidden', height:140 }}>
+                <img src={selectedChest.shop_photo} alt={selectedChest.shop_name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
               </div>
             )}
-
             {(selectedChest.shop_name || selectedChest.shop_tel || selectedChest.shop_url) && (
-              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: '12px 14px', margin: '10px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {selectedChest.shop_name && (
-                  <div style={{ fontSize: 14, fontWeight: 700 }}>🏪 {selectedChest.shop_name}</div>
-                )}
-                {selectedChest.description && (
-                  <div style={{ fontSize: 12, opacity: 0.7, lineHeight: 1.6 }}>{selectedChest.description}</div>
-                )}
-                {selectedChest.shop_tel && (
-                  <a href={`tel:${selectedChest.shop_tel}`} style={{ fontSize: 13, color: '#4CAF50', textDecoration: 'none' }}>
-                    📞 {selectedChest.shop_tel}
-                  </a>
-                )}
-                {selectedChest.shop_url && (
-                  <a href={selectedChest.shop_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#3b82f6', textDecoration: 'none' }}>
-                    🔗 公式サイトを見る
-                  </a>
-                )}
+              <div style={{ background:'rgba(255,255,255,0.05)', borderRadius:12, padding:'12px 14px', margin:'10px 0', display:'flex', flexDirection:'column', gap:8 }}>
+                {selectedChest.shop_name && <div style={{ fontSize:14, fontWeight:700 }}>🏪 {selectedChest.shop_name}</div>}
+                {selectedChest.description && <div style={{ fontSize:12, opacity:0.7, lineHeight:1.6 }}>{selectedChest.description}</div>}
+                {selectedChest.shop_tel && <a href={`tel:${selectedChest.shop_tel}`} style={{ fontSize:13, color:'#4CAF50', textDecoration:'none' }}>📞 {selectedChest.shop_tel}</a>}
+                {selectedChest.shop_url && <a href={selectedChest.shop_url} target="_blank" rel="noreferrer" style={{ fontSize:13, color:'#3b82f6', textDecoration:'none' }}>🔗 公式サイトを見る</a>}
               </div>
             )}
-
-            <div style={{ fontSize: 13, opacity: 0.6, margin: '4px 0 12px', textAlign: 'center' }}>
+            <div style={{ fontSize:13, opacity:0.6, margin:'4px 0 12px', textAlign:'center' }}>
               💰 獲得ゴール：{selectedChest.gold_amount ?? 100}G
             </div>
-
             <div className="chest-detail-btns">
-              <button
-                className="chest-detail-route-btn"
-                onClick={() => {
-                  const url = playerPos
-                    ? `https://www.google.com/maps/dir/${playerPos[0]},${playerPos[1]}/${selectedChest.lat},${selectedChest.lng}`
-                    : `https://www.google.com/maps/dir//${selectedChest.lat},${selectedChest.lng}`;
-                  window.open(url, '_blank');
-                }}
-              >
-                🗺️ 経路案内
-              </button>
-              <button
-                className="chest-detail-ar-btn"
-                onClick={() => { setShowAR(true); }}
-              >
-                📷 ARで開ける
-              </button>
+              <button className="chest-detail-route-btn" onClick={() => {
+                const url = playerPos
+                  ? `https://www.google.com/maps/dir/${playerPos[0]},${playerPos[1]}/${selectedChest.lat},${selectedChest.lng}`
+                  : `https://www.google.com/maps/dir//${selectedChest.lat},${selectedChest.lng}`;
+                window.open(url, '_blank');
+              }}>🗺️ 経路案内</button>
+              <button className="chest-detail-ar-btn" onClick={() => { setShowAR(true); }}>📷 ARで開ける</button>
             </div>
           </div>
         </div>
@@ -623,27 +554,25 @@ useEffect(() => {
               <div className="chest chest--opening">
                 <div className="chest__shadow" />
                 <div className="chest__body"><div className="chest__lock" /></div>
-                <div className="chest__lid">
-                  <div className="chest__lid-top" />
-                  <div className="chest__lid-front" />
-                </div>
-                <div className="chest__sparkles" aria-hidden="true">
-                  <span>✨</span><span>⭐</span><span>✨</span>
-                </div>
+                <div className="chest__lid"><div className="chest__lid-top" /><div className="chest__lid-front" /></div>
+                <div className="chest__sparkles" aria-hidden="true"><span>✨</span><span>⭐</span><span>✨</span></div>
               </div>
             </div>
             <div className={`reward-modal__rewards${modalRevealed ? ' reward-modal__rewards--visible' : ''}`}>
               <h2 id="reward-modal-title" className="reward-modal__title">宝箱を開けた！</h2>
               <p className="reward-modal__item">{rewardModal.itemName}</p>
               <p className="reward-modal__gold">+{rewardModal.gold.toLocaleString()} G</p>
-              <button type="button" className="reward-modal__claim-btn" onClick={handleClaimReward}>
-                受け取る！
-              </button>
+              <button type="button" className="reward-modal__claim-btn" onClick={handleClaimReward}>受け取る！</button>
             </div>
           </div>
         </div>
       )}
 
+      <style>{`
+        @keyframes compassSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes trophyShine { 0%,100%{opacity:0.3} 50%{opacity:1} }
+        @keyframes packBounce  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
+      `}</style>
+
     </div>
   );
-}
