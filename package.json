@@ -13,11 +13,13 @@
     "@types/node": "^16.18.126",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.152.0",
     "leaflet": "^1.9.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-leaflet": "^5.0.0",
     "react-scripts": "5.0.1",
+    "three": "^0.152.2",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
   },

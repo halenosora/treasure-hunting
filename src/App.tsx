@@ -26,6 +26,9 @@ interface TreasureChest {
   shop_tel?: string;
   description?: string;
   gold_amount?: number;
+  unlock_mode?: string;
+  appear_radius?: number;
+  qr_code?: string;
 }
 
 interface RewardResult {
@@ -181,7 +184,10 @@ useEffect(() => {
           shop_url:    c.shop_url    ?? '',
           shop_tel:    c.shop_tel    ?? '',
           description: c.description ?? '',
-          gold_amount: c.gold_amount ?? 100,
+          gold_amount:   c.gold_amount   ?? 100,
+          unlock_mode:   c.unlock_mode   ?? 'gps',
+          appear_radius: c.appear_radius ?? 50,
+          qr_code:       c.qr_code       ?? '',
         })));
       }
     });
@@ -349,7 +355,30 @@ useEffect(() => {
     <div className="app">
 
       {/* ── モーダル類 ── */}
-      {showAR      && <ARCamera onClose={() => setShowAR(false)} />}
+      {showAR && (
+  <ARCamera
+    onClose={() => { setShowAR(false); setActiveNav('map'); }}
+    chest={selectedChest ? {
+      id: selectedChest.id,
+      name: selectedChest.name,
+      type: selectedChest.type,
+      lat: selectedChest.lat,
+      lng: selectedChest.lng,
+      gold_amount: selectedChest.gold_amount,
+      unlock_mode: (selectedChest as any).unlock_mode ?? 'gps',
+      appear_radius: (selectedChest as any).appear_radius ?? 50,
+      qr_code: (selectedChest as any).qr_code ?? '',
+    } : undefined}
+    playerPos={playerPos}
+    onClaim={(gold) => {
+      const newGold = totalGold + gold;
+      setTotalGold(newGold);
+      setGoldPulse(true);
+      setTimeout(() => setGoldPulse(false), 600);
+      if (user) supabase.from('profiles').update({ gold: newGold }).eq('id', user.id);
+    }}
+  />
+)}
       {showAvatar  && <Avatar   onClose={() => setShowAvatar(false)} />}
       {showRanking && <Ranking  onClose={() => setShowRanking(false)} />}
       {showItems   && user && <Items userId={user.id} onClose={() => setShowItems(false)} />}
