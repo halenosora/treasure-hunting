@@ -122,7 +122,7 @@ export default function CharacterCreate({ userId, onComplete }: { userId: string
         </div>
 
         {/* パネル */}
-        <div style={{ flex: 1, background: 'rgba(0,0,0,0.5)', borderTop: '1px solid rgba(232,184,75,0.2)', padding: '16px 20px' }}>
+        <div style={{ flex: 1, background: 'rgba(0,0,0,0.5)', borderTop: '1px solid rgba(232,184,75,0.2)', padding: '16px 20px', overflowY: 'auto', minHeight: 0 }}>
 
           {/* Step 0: 名前 */}
           {step === 0 && (
