@@ -145,10 +145,11 @@ function randomGold(type: TreasureType): number {
 }
 
 // ── MapController ────────────────────────────────────────────
-function MapController({ center }: { center: [number, number] | null; northUp: boolean; heading: number }) {
+function MapController({ center, active }: { center: [number, number] | null; northUp: boolean; heading: number; active: boolean }) {
   const map = useMap();
   useEffect(() => { map.setMinZoom(MIN_ZOOM); }, [map]);
   useEffect(() => { if (center) map.setView(center, map.getZoom()); }, [center, map]);
+  useEffect(() => { if (active) setTimeout(() => map.invalidateSize(), 50); }, [active, map]);
   return null;
 }
 
@@ -401,7 +402,7 @@ useEffect(() => {
         <section className="map-area" aria-label="地図" style={{ display: activeNav === 'map' ? 'block' : 'none', position:'absolute', inset:0 }}>
           <MapContainer center={mapCenter} zoom={DEFAULT_ZOOM} minZoom={MIN_ZOOM} maxZoom={19} scrollWheelZoom style={{ width:'100%', height:'100%' }}>
             <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <MapController center={playerPos} northUp heading={0} />
+            <MapController center={playerPos} northUp heading={0} active={activeNav === 'map'} />
             {playerPos && <Marker position={playerPos} icon={createPlayerIcon()}><Popup>現在地</Popup></Marker>}
             {treasures.map((t) => (
               <Marker key={t.id} position={[t.lat, t.lng]} icon={createTreasureIcon(t.type)} eventHandlers={{ click: () => setSelectedChest(t) }} />
