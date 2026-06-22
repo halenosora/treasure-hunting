@@ -38,6 +38,7 @@ interface RewardResult {
   gold: number;
   treasureName: string;
   type: TreasureType;
+  chestId?: string | number;
 }
 
 // ── 定数 ────────────────────────────────────────────────────
@@ -278,7 +279,20 @@ useEffect(() => {
     setActiveNav(key);
   }, []);
 
-  const handleOpenTreasure = useCallback((t: TreasureChest) => {
+  const handleOpenTreasure = useCallback(async (t: TreasureChest) => {
+    // 重複開封チェック
+    if (user && t.id) {
+      const { data } = await supabase
+        .from('chest_logs')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('chest_id', t.id)
+        .maybeSingle();
+      if (data) {
+        alert('この宝箱はすでに開封済みです！');
+        return;
+      }
+    }
     setModalRevealed(false);
     const cfg  = TREASURE_CONFIG[t.type];
     const gold = randomGold(t.type);
@@ -287,54 +301,41 @@ useEffect(() => {
       gold,
       treasureName: t.name,
       type:         t.type,
+      chestId:      t.id,
     });
     setTimeout(() => setModalRevealed(true), 900);
-  }, []);
+  }, [user]);
 
+  // 取得ログをSupabaseに保存
   const handleClaimReward = useCallback(async () => {
     if (!rewardModal || !user) return;
-  
     const newGold = totalGold + rewardModal.gold;
     setTotalGold(newGold);
     setGoldPulse(true);
     setTimeout(() => setGoldPulse(false), 600);
-  
-    // ゴールドをSupabaseに保存
     await supabase.from('profiles').update({ gold: newGold }).eq('id', user.id);
-  
-    // 獲得アイテムをSupabaseに保存
     const typeToCategory: Record<TreasureType, string> = {
-      地域クーポン:  'クーポン',
-      ゲームアイテム: '武器',
-      スポンサード:  'NFT',
-      期間限定:     'アクセサリー',
-      レジェンド:   'NFT',
+      地域クーポン:'クーポン', ゲームアイテム:'武器', スポンサード:'NFT', 期間限定:'アクセサリー', レジェンド:'NFT',
     };
     const typeToEmoji: Record<TreasureType, string> = {
-      地域クーポン:  '🎟️',
-      ゲームアイテム: '⚔️',
-      スポンサード:  '⭐',
-      期間限定:     '💜',
-      レジェンド:   '👑',
+      地域クーポン:'🎟️', ゲームアイテム:'⚔️', スポンサード:'⭐', 期間限定:'💜', レジェンド:'👑',
     };
     await supabase.from('items').insert({
-      user_id:   user.id,
+      user_id:  user.id,
       item_id: `${rewardModal.type}_${user.id}_${Date.now()}_${Math.random()}`,
-      name:      rewardModal.itemName,
-      category:  typeToCategory[rewardModal.type],
-      rarity:    rewardModal.type === 'レジェンド' ? '限定' : rewardModal.type === 'スポンサード' ? 'エピック' : 'レア',
-      emoji:     typeToEmoji[rewardModal.type],
-      source:    rewardModal.treasureName,
-      is_nft:    rewardModal.type === 'レジェンド' || rewardModal.type === 'スポンサード',
+      name:     rewardModal.itemName,
+      category: typeToCategory[rewardModal.type],
+      rarity:   rewardModal.type === 'レジェンド' ? '限定' : rewardModal.type === 'スポンサード' ? 'エピック' : 'レア',
+      emoji:    typeToEmoji[rewardModal.type],
+      source:   rewardModal.treasureName,
+      is_nft:   rewardModal.type === 'レジェンド' || rewardModal.type === 'スポンサード',
     });
-  
-    // 取得ログをSupabaseに保存
     await supabase.from('chest_logs').insert({
-      user_id:      user.id,
-      item_name:    rewardModal.itemName,
-      gold_earned:  rewardModal.gold,
+      user_id:    user.id,
+      item_name:  rewardModal.itemName,
+      gold_earned: rewardModal.gold,
+      chest_id:   rewardModal.chestId ?? null,
     });
-  
     setRewardModal(null);
     setModalRevealed(false);
   }, [rewardModal, totalGold, user]);
