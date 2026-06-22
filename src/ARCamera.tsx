@@ -28,6 +28,7 @@ const ARCamera: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         tracks.forEach(t => t.stop());
       }
     };
+  }, []);
 
   return (
     <div className="ar-screen">
