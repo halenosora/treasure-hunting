@@ -161,6 +161,7 @@ export default function App() {
   const [showAvatar,   setShowAvatar]   = useState(false);
   const [showRanking,  setShowRanking]  = useState(false);
   const [showItems,    setShowItems]    = useState(false);
+  // 上記はAR・Admin用に残す
   const [showAdmin,    setShowAdmin]    = useState(false);
   const [showSplash,   setShowSplash]   = useState(true);
   // Supabaseから宝箱データ取得
@@ -264,9 +265,6 @@ useEffect(() => {
 
   const handleNavClick = useCallback((key: NavItem) => {
     setActiveNav(key);
-    if (key === 'avatar') setShowAvatar(true);
-    if (key === 'rank')   setShowRanking(true);
-    if (key === 'item')   setShowItems(true);
   }, []);
 
   const handleOpenTreasure = useCallback((t: TreasureChest) => {
@@ -403,13 +401,8 @@ useEffect(() => {
 
       {/* ── メインコンテンツ ── */}
       <main className="main-content">
-        {/* アバター・ランク・アイテムはここにインライン表示 */}
-        {showAvatar  && <Avatar   onClose={() => { setShowAvatar(false); setActiveNav('map'); }} />}
-        {showRanking && <Ranking  onClose={() => { setShowRanking(false); setActiveNav('map'); }} />}
-        {showItems   && user && <Items userId={user.id} onClose={() => { setShowItems(false); setActiveNav('map'); }} />}
-
-        {/* 地図（常に裏にある） */}
-        <section className="map-area" aria-label="地図" style={{ display: (showAvatar || showRanking || showItems) ? 'none' : 'block' }}>
+        {/* 地図 */}
+        <section className="map-area" aria-label="地図" style={{ display: activeNav === 'map' ? 'block' : 'none' }}>>
           <MapContainer
             center={mapCenter}
             zoom={DEFAULT_ZOOM}
@@ -439,8 +432,29 @@ useEffect(() => {
               />
             ))}
           </MapContainer>
-        </section>
-      </main>
+          </section>
+
+{/* マイページ */}
+{activeNav === 'avatar' && (
+  <div style={{ position:'absolute', inset:0, overflowY:'auto', background:'#0a0e1a' }}>
+    <Avatar onClose={() => setActiveNav('map')} />
+  </div>
+)}
+
+{/* ランク */}
+{activeNav === 'rank' && (
+  <div style={{ position:'absolute', inset:0, overflowY:'auto', background:'#0a0e1a' }}>
+    <Ranking onClose={() => setActiveNav('map')} />
+  </div>
+)}
+
+{/* アイテム */}
+{activeNav === 'item' && user && (
+  <div style={{ position:'absolute', inset:0, overflowY:'auto', background:'#0a0e1a' }}>
+    <Items userId={user.id} onClose={() => setActiveNav('map')} />
+  </div>
+)}
+</main>
 
       {/* ── ナビゲーション ── */}
       <nav className="bottom-nav" aria-label="メインナビゲーション">
