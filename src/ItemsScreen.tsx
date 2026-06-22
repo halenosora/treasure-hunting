@@ -9,14 +9,17 @@ interface ItemsProps {
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
-  '帽子': '🎩',
-  '服': '👘',
-  'シューズ': '👟',
+  '帽子':       '🎩',
+  '上着':       '🧥',
+  'パンツ':     '👖',
+  '靴下':       '🧦',
+  '靴':         '👟',
   'アクセサリー': '💍',
-  '武器': '⚔️',
-  'クーポン': '🎟️',
-  'NFT': '💎',
-  'すべて': '🎒',
+  'ペット':     '🐾',
+  '乗り物':     '🚗',
+  'クーポン':   '🎫',
+  'NFT':        '⭐',
+  'すべて':     '🎒',
 };
 
 const Items: React.FC<ItemsProps> = ({ userId, onClose }) => {

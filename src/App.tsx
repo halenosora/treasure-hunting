@@ -566,7 +566,21 @@ useEffect(() => {
                   : `https://www.google.com/maps/dir//${selectedChest.lat},${selectedChest.lng}`;
                 window.open(url, '_blank');
               }}>🗺️ 経路案内</button>
-              <button className="chest-detail-ar-btn" onClick={() => { setShowAR(true); }}>📷 ARで開ける</button>
+              <button className="chest-detail-ar-btn" onClick={async () => {
+                if (user && selectedChest?.id) {
+                  const { data } = await supabase
+                    .from('chest_logs')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .eq('chest_id', selectedChest.id)
+                    .maybeSingle();
+                  if (data) {
+                    alert('この宝箱はすでに開封済みです！');
+                    return;
+                  }
+                }
+                setShowAR(true);
+              }}>📷 ARで開ける</button>
             </div>
           </div>
         </div>
