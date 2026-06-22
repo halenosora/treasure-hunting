@@ -584,7 +584,7 @@ useEffect(() => {
               </button>
               <button
                 className="chest-detail-ar-btn"
-                onClick={() => { setShowAR(true); setActiveNav('ar'); }}
+                onClick={() => { setShowAR(true); }}
               >
                 📷 ARで開ける
               </button>
