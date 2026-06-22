@@ -124,13 +124,14 @@ useEffect(() => {
     .eq('is_active', true)
     .then(({ data }) => {
       if (data) {
-        setTreasures(data.map(c => ({
-          id: c.id,
-          name: c.name,
-          type: c.type as TreasureType,
-          lat: c.lat,
-          lng: c.lng,
-        })));
+        const validTypes = Object.keys(TREASURE_CONFIG) as TreasureType[];
+setTreasures(data.map(c => ({
+  id: c.id,
+  name: c.name,
+  type: validTypes.includes(c.type as TreasureType) ? c.type as TreasureType : '無料クーポン',
+  lat: c.lat,
+  lng: c.lng,
+})));
       }
     });
 }, []);
