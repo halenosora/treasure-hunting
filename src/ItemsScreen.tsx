@@ -47,7 +47,7 @@ const Items: React.FC<ItemsProps> = ({ userId, onClose }) => {
   return (
     <div className="items-screen">
       <div className="items-topbar">
-        <button className="items-back" onClick={onClose}>← 戻る</button>
+      <div style={{ width: 60 }} />
         <span className="items-title">アイテムボックス</span>
         <span className="items-count">{items.length}個</span>
       </div>
