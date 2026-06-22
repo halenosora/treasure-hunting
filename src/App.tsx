@@ -9,6 +9,7 @@ import Auth from './Auth';
 import Items from './ItemsScreen';
 import AdminPage from './AdminPage';
 import SplashScreen from './SplashScreen';
+import CharacterCreate from './CharacterCreate';
 import './App.css';
 
 // ── 型定義 ──────────────────────────────────────────────────
@@ -165,6 +166,7 @@ export default function App() {
   // 上記はAR・Admin用に残す
   const [showAdmin,    setShowAdmin]    = useState(false);
   const [showSplash,   setShowSplash]   = useState(true);
+  const [showCharCreate, setShowCharCreate] = useState(false);
   // Supabaseから宝箱データ取得
 const [treasures, setTreasures] = useState<TreasureChest[]>([]);
 
@@ -229,11 +231,20 @@ useEffect(() => {
   }, []);
 
   // プロフィール取得
+  // プロフィール取得
   useEffect(() => {
     if (!user) return;
     supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
       .then(({ data }) => {
-        if (data) { setProfile(data); setTotalGold(data.gold ?? 0); }
+        if (data) {
+          setProfile(data);
+          setTotalGold(data.gold ?? 0);
+          // 初回登録（username未設定）の場合キャラクター作成画面へ
+          if (!data.username) setShowCharCreate(true);
+        } else {
+          // プロフィール未作成の場合
+          setShowCharCreate(true);
+        }
       });
   }, [user]);
 
@@ -355,6 +366,16 @@ useEffect(() => {
 
       {/* フルスクリーン（ボトムナビの上） */}
       {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+      {showCharCreate && user && (
+        <CharacterCreate
+          userId={user.id}
+          onComplete={() => {
+            setShowCharCreate(false);
+            supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+              .then(({ data }) => { if (data) { setProfile(data); setTotalGold(data.gold ?? 0); } });
+          }}
+        />
+      )}
       {showAR && (
         <ARCamera
           onClose={() => setShowAR(false)}
