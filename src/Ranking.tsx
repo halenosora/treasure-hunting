@@ -39,7 +39,7 @@ const Ranking: React.FC<RankingProps> = ({ onClose }) => {
   return (
     <div className="rk-screen">
       <div className="rk-topbar">
-        <button className="rk-back" onClick={onClose}>← 戻る</button>
+      <div style={{ width: 60 }} />
         <span className="rk-title">ランキング</span>
         <div style={{ width: 60 }} />
       </div>

@@ -33,7 +33,7 @@ const Avatar: React.FC<AvatarProps> = ({ onClose }) => {
   return (
     <div className="av-screen">
       <div className="av-topbar">
-        <button className="av-back" onClick={onClose}>← 戻る</button>
+      <div style={{ width: 60 }} />
         <span className="av-title">アバター</span>
         <button className="av-save" onClick={handleSave}>
           {saved ? '✓ 保存!' : '保存'}

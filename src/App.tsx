@@ -356,34 +356,32 @@ useEffect(() => {
     {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
 
       {/* ── モーダル類 ── */}
+      {/* ── フルスクリーン（ボトムナビの上に重ねない） ── */}
       {showAR && (
-  <ARCamera
-    onClose={() => { setShowAR(false); setActiveNav('map'); }}
-    chest={selectedChest ? {
-      id: selectedChest.id,
-      name: selectedChest.name,
-      type: selectedChest.type,
-      lat: selectedChest.lat,
-      lng: selectedChest.lng,
-      gold_amount: selectedChest.gold_amount,
-      unlock_mode: (selectedChest as any).unlock_mode ?? 'gps',
-      appear_radius: (selectedChest as any).appear_radius ?? 50,
-      qr_code: (selectedChest as any).qr_code ?? '',
-    } : undefined}
-    playerPos={playerPos}
-    onClaim={(gold) => {
-      const newGold = totalGold + gold;
-      setTotalGold(newGold);
-      setGoldPulse(true);
-      setTimeout(() => setGoldPulse(false), 600);
-      if (user) supabase.from('profiles').update({ gold: newGold }).eq('id', user.id);
-    }}
-  />
-)}
-      {showAvatar  && <Avatar   onClose={() => setShowAvatar(false)} />}
-      {showRanking && <Ranking  onClose={() => setShowRanking(false)} />}
-      {showItems   && user && <Items userId={user.id} onClose={() => setShowItems(false)} />}
-      {showAdmin   && <AdminPage onClose={() => setShowAdmin(false)} />}
+        <ARCamera
+          onClose={() => { setShowAR(false); setActiveNav('map'); }}
+          chest={selectedChest ? {
+            id: selectedChest.id,
+            name: selectedChest.name,
+            type: selectedChest.type,
+            lat: selectedChest.lat,
+            lng: selectedChest.lng,
+            gold_amount: selectedChest.gold_amount,
+            unlock_mode: (selectedChest as any).unlock_mode ?? 'gps',
+            appear_radius: (selectedChest as any).appear_radius ?? 50,
+            qr_code: (selectedChest as any).qr_code ?? '',
+          } : undefined}
+          playerPos={playerPos}
+          onClaim={(gold) => {
+            const newGold = totalGold + gold;
+            setTotalGold(newGold);
+            setGoldPulse(true);
+            setTimeout(() => setGoldPulse(false), 600);
+            if (user) supabase.from('profiles').update({ gold: newGold }).eq('id', user.id);
+          }}
+        />
+      )}
+      {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
 
       {/* ── ヘッダー ── */}
       <header className="title-bar">
@@ -405,7 +403,13 @@ useEffect(() => {
 
       {/* ── メインコンテンツ ── */}
       <main className="main-content">
-        <section className="map-area" aria-label="地図">
+        {/* アバター・ランク・アイテムはここにインライン表示 */}
+        {showAvatar  && <Avatar   onClose={() => { setShowAvatar(false); setActiveNav('map'); }} />}
+        {showRanking && <Ranking  onClose={() => { setShowRanking(false); setActiveNav('map'); }} />}
+        {showItems   && user && <Items userId={user.id} onClose={() => { setShowItems(false); setActiveNav('map'); }} />}
+
+        {/* 地図（常に裏にある） */}
+        <section className="map-area" aria-label="地図" style={{ display: (showAvatar || showRanking || showItems) ? 'none' : 'block' }}>
           <MapContainer
             center={mapCenter}
             zoom={DEFAULT_ZOOM}
