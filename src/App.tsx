@@ -12,7 +12,7 @@ import SplashScreen from './SplashScreen';
 import './App.css';
 
 // ── 型定義 ──────────────────────────────────────────────────
-type NavItem = 'map' | 'ar' | 'avatar' | 'rank' | 'item';
+type NavItem = 'map' | 'avatar' | 'rank' | 'item';
 type TreasureType = '地域クーポン' | 'ゲームアイテム' | 'スポンサード' | '期間限定' | 'レジェンド';
 
 interface TreasureChest {
@@ -54,12 +54,11 @@ const TREASURE_CONFIG: Record<TreasureType, {
   レジェンド:   { color: '#ef4444', emoji: '👑', shape: 'crown',   label: 'レジェンド',   items: ['伝説の剣NFT', '黄金の鎧NFT', 'ドラゴンの翼NFT', '神々の指輪NFT'] },
 };
 
-const navItems: { key: NavItem; label: string; icon: string }[] = [
-  { key: 'map',    label: 'マップ',     icon: '🗺️' },
-  { key: 'ar',     label: 'AR',        icon: '📷' },
-  { key: 'avatar', label: 'アバター',   icon: '👤' },
-  { key: 'rank',   label: 'ランク',     icon: '🏆' },
-  { key: 'item',   label: 'アイテム',   icon: '🎒' },
+const navItems: { key: NavItem; label: string }[] = [
+  { key: 'map',    label: 'マップ'   },
+  { key: 'avatar', label: 'マイページ' },
+  { key: 'rank',   label: 'ランク'   },
+  { key: 'item',   label: 'アイテム' },
 ];
 
 // ── ユーティリティ ───────────────────────────────────────────
@@ -265,7 +264,6 @@ useEffect(() => {
 
   const handleNavClick = useCallback((key: NavItem) => {
     setActiveNav(key);
-    if (key === 'ar')     setShowAR(true);
     if (key === 'avatar') setShowAvatar(true);
     if (key === 'rank')   setShowRanking(true);
     if (key === 'item')   setShowItems(true);
@@ -442,19 +440,78 @@ useEffect(() => {
 
       {/* ── ナビゲーション ── */}
       <nav className="bottom-nav" aria-label="メインナビゲーション">
-        {navItems.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className={`bottom-nav__item${activeNav === item.key ? ' bottom-nav__item--active' : ''}`}
-            onClick={() => handleNavClick(item.key)}
-            aria-current={activeNav === item.key ? 'page' : undefined}
-          >
-            <span aria-hidden="true">{item.icon}</span>
-            <span className="bottom-nav__label">{item.label}</span>
-          </button>
-        ))}
+        {navItems.map((item) => {
+          const active = activeNav === item.key;
+          const color  = active ? '#e8b84b' : '#4a5268';
+          return (
+            <button
+              key={item.key}
+              type="button"
+              className={`bottom-nav__item${active ? ' bottom-nav__item--active' : ''}`}
+              onClick={() => handleNavClick(item.key)}
+              aria-current={active ? 'page' : undefined}
+            >
+              {/* ── アイコン（差し替え時はここのSVGを変えるだけ） ── */}
+              {item.key === 'map' && (
+                <svg width="28" height="28" viewBox="0 0 24 24" style={{ overflow:'visible' }}>
+                  <circle cx="12" cy="12" r="10" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="12" cy="12" r="8.5" fill="none" stroke={color} strokeWidth="0.5" strokeOpacity="0.4"/>
+                  <text x="12" y="5"  textAnchor="middle" fontSize="3.5" fill={color} fontFamily="Georgia">N</text>
+                  <text x="12" y="21" textAnchor="middle" fontSize="3.5" fill={color} fontFamily="Georgia">S</text>
+                  <text x="21" y="13" textAnchor="middle" fontSize="3.5" fill={color} fontFamily="Georgia">E</text>
+                  <text x="3"  y="13" textAnchor="middle" fontSize="3.5" fill={color} fontFamily="Georgia">W</text>
+                  <g style={{ transformOrigin:'12px 12px', animation: active ? 'compassSpin 3s linear infinite' : 'compassSpin 8s linear infinite' }}>
+                    <polygon points="12,5 10.5,12 12,11 13.5,12" fill={color}/>
+                    <polygon points="12,19 10.5,12 12,13 13.5,12" fill={active ? '#555' : '#2a2a3a'}/>
+                  </g>
+                  <circle cx="12" cy="12" r="1.2" fill={color}/>
+                </svg>
+              )}
+              {item.key === 'avatar' && (
+                <svg width="28" height="28" viewBox="0 0 24 24">
+                  <rect x="4" y="5" width="16" height="14" rx="1" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <ellipse cx="12" cy="5"  rx="8" ry="2" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <ellipse cx="12" cy="19" rx="8" ry="2" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <line x1="7" y1="9"  x2="17" y2="9"  stroke={color} strokeWidth="1" strokeLinecap="round" strokeOpacity="0.8"/>
+                  <line x1="7" y1="12" x2="15" y2="12" stroke={color} strokeWidth="1" strokeLinecap="round" strokeOpacity="0.8"/>
+                  <line x1="7" y1="15" x2="16" y2="15" stroke={color} strokeWidth="1" strokeLinecap="round" strokeOpacity="0.8"/>
+                  <circle cx="16" cy="9" r="2" fill="none" stroke={color} strokeWidth="1"/>
+                </svg>
+              )}
+              {item.key === 'rank' && (
+                <svg width="28" height="28" viewBox="0 0 24 24">
+                  <path d="M7,4 L17,4 L15,13 Q12,15 9,13 Z" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M7,6 Q3,6 3,10 Q3,13 7,13" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M17,6 Q21,6 21,10 Q21,13 17,13" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <line x1="12" y1="15" x2="12" y2="18" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <rect x="8" y="18" width="8" height="2" rx="1" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <text x="12" y="12" textAnchor="middle" fontSize="5" fill={color} fontFamily="Georgia">★</text>
+                  {active && <>
+                    <line x1="5"  y1="3" x2="4"  y2="2" stroke={color} strokeWidth="0.8" strokeLinecap="round" style={{ animation:'trophyShine 1.5s ease-in-out infinite' }}/>
+                    <line x1="19" y1="3" x2="20" y2="2" stroke={color} strokeWidth="0.8" strokeLinecap="round" style={{ animation:'trophyShine 1.5s ease-in-out infinite 0.3s' }}/>
+                    <line x1="12" y1="3" x2="12" y2="1.5" stroke={color} strokeWidth="0.8" strokeLinecap="round" style={{ animation:'trophyShine 1.5s ease-in-out infinite 0.6s' }}/>
+                  </>}
+                </svg>
+              )}
+              {item.key === 'item' && (
+                <svg width="28" height="28" viewBox="0 0 24 24" style={{ animation: active ? 'packBounce 2s ease-in-out infinite' : 'none' }}>
+                  <rect x="6" y="8" width="12" height="13" rx="3" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M9,8 Q9,4 12,4 Q15,4 15,8" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <rect x="8" y="13" width="8" height="5" rx="1.5" fill="none" stroke={color} strokeWidth="1" strokeLinecap="round"/>
+                  <line x1="10" y1="15.5" x2="14" y2="15.5" stroke={color} strokeWidth="1" strokeLinecap="round" strokeDasharray="1,0.5"/>
+                  <path d="M10,8 Q12,6 14,8" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+                </svg>
+              )}
+              <span className="bottom-nav__label">{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
+      <style>{`
+        @keyframes compassSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes trophyShine { 0%,100%{opacity:0.3} 50%{opacity:1} }
+        @keyframes packBounce  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
+      `}</style>
 
       {/* ── 宝箱詳細 ── */}
       {selectedChest && (
