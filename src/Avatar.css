@@ -1,5 +1,5 @@
 .av-screen {
-  position: fixed;
+  position: relative;
   inset: 0;
   background: #0a0e1a;
   display: flex;

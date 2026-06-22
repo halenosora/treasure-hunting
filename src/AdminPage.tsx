@@ -204,20 +204,6 @@ const payload = { name:selected.name, type:selected.type, lat:selected.lat, lng:
                     </button>
                   </div>
                 </label>
-                <div style={{ borderTop:'1px solid rgba(255,255,255,0.1)', paddingTop:10, fontSize:12, color:'#ffd700' }}>🔓 開封設定</div>
-
-<label style={lbl}>開封モード
-  <div style={{ display:'flex', gap:8, marginTop:4 }}>
-    <button onClick={() => setSelected({...selected, unlock_mode:'gps'})}
-      style={{ flex:1, padding:'8px', border:`2px solid ${selected.unlock_mode==='gps'?'#22c55e':'rgba(255,255,255,0.1)'}`, background:selected.unlock_mode==='gps'?'rgba(34,197,94,0.2)':'transparent', color:'#e8d5a3', borderRadius:8, cursor:'pointer', fontSize:12 }}>
-      📡 GPSモード
-    </button>
-    <button onClick={() => setSelected({...selected, unlock_mode:'qr'})}
-      style={{ flex:1, padding:'8px', border:`2px solid ${selected.unlock_mode==='qr'?'#3b82f6':'rgba(255,255,255,0.1)'}`, background:selected.unlock_mode==='qr'?'rgba(59,130,246,0.2)':'transparent', color:'#e8d5a3', borderRadius:8, cursor:'pointer', fontSize:12 }}>
-      📷 QRモード
-    </button>
-  </div>
-</label>
                 {selected.unlock_mode === 'gps' && (
                   <label style={lbl}>出現半径（メートル）
                     <input type="number" value={selected.appear_radius} onChange={e => setSelected({...selected, appear_radius:Number(e.target.value)})} style={inp} />
