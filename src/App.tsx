@@ -378,7 +378,7 @@ useEffect(() => {
       )}
       {showAR && (
         <ARCamera
-          onClose={() => setShowAR(false)}
+          onClose={() => { setShowAR(false); setActiveNav('map'); }}
           chest={selectedChest ? {
             id: selectedChest.id, name: selectedChest.name, type: selectedChest.type,
             lat: selectedChest.lat, lng: selectedChest.lng,
