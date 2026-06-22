@@ -1,123 +1,254 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from './supabase';
+import { RARITY_COLORS, WEARABLE_CATEGORIES, Item, ItemCategory } from './items';
 import './Avatar.css';
-import { Item, ItemCategory, RARITY_COLORS, DEFAULT_ITEMS, LOCAL_ITEMS, COLLAB_ITEMS } from './items';
 
-const CATEGORIES: ItemCategory[] = ['帽子', '上着', 'パンツ', '靴下', '靴', 'アクセサリー', 'ペット', '乗り物'];
+interface AvatarProps { onClose: () => void; }
 
-// デモ用：最初から全アイテムを所持
-const ALL_ITEMS = [...DEFAULT_ITEMS, ...LOCAL_ITEMS, ...COLLAB_ITEMS];
+const MENU_ITEMS = [
+  { id: 'avatar',    icon: '👤', label: '着せ替え' },
+  { id: 'notice',   icon: '📢', label: 'お知らせ' },
+  { id: 'mission',  icon: '🎯', label: 'ミッション' },
+  { id: 'friend',   icon: '👥', label: 'フレンド' },
+  { id: 'setting',  icon: '⚙️', label: '設定' },
+];
 
-interface AvatarProps {
-  onClose: () => void;
-}
+const NOTICES = [
+  { id:1, title:'TERRAHUNTへようこそ！', body:'宝箱を探して冒険を始めよう！', date:'2026-06-22', isNew:true },
+  { id:2, title:'新エリア追加のお知らせ', body:'横浜エリアに新しい宝箱が追加されました。', date:'2026-06-20', isNew:true },
+  { id:3, title:'メンテナンス完了', body:'システムメンテナンスが完了しました。', date:'2026-06-18', isNew:false },
+];
 
-const Avatar: React.FC<AvatarProps> = ({ onClose }) => {
+const MISSIONS = [
+  { id:1, title:'初めての宝箱',     desc:'宝箱を1個開封する',     reward:100,  progress:1, total:1,  done:true },
+  { id:2, title:'宝探し初級',      desc:'宝箱を5個開封する',     reward:300,  progress:3, total:5,  done:false },
+  { id:3, title:'地域の探索者',     desc:'異なるエリアで宝箱を開く', reward:500,  progress:1, total:3,  done:false },
+  { id:4, title:'コレクター',       desc:'アイテムを10個集める',   reward:1000, progress:3, total:10, done:false },
+  { id:5, title:'ランキング入り',    desc:'ランキングトップ10に入る', reward:2000, progress:0, total:1,  done:false },
+];
+
+export default function Avatar({ onClose }: AvatarProps) {
+  const [tab, setTab]         = useState('notice');
+  const [profile, setProfile] = useState<any>(null);
+  const [items, setItems]     = useState<any[]>([]);
+  const [equipped, setEquipped] = useState<Partial<Record<ItemCategory, Item>>>({});
   const [activeCategory, setActiveCategory] = useState<ItemCategory>('帽子');
-  const [equipped, setEquipped] = useState<Partial<Record<ItemCategory, Item>>>({
-    帽子: DEFAULT_ITEMS[0],
-    上着: DEFAULT_ITEMS[1],
-  });
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving]   = useState(false);
+  const [noticeOpen, setNoticeOpen] = useState<number | null>(null);
 
-  const filteredItems = ALL_ITEMS.filter(item => item.category === activeCategory);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+        .then(({ data }) => { if (data) setProfile(data); });
+      supabase.from('items').select('*').eq('user_id', user.id)
+        .then(({ data }) => { if (data) setItems(data); });
+    });
+  }, []);
 
-  const handleEquip = (item: Item) => {
-    setEquipped(prev => ({ ...prev, [item.category]: item }));
-  };
+  const wearableItems = items.filter(i => WEARABLE_CATEGORIES.includes(i.category as ItemCategory));
+  const filteredItems = wearableItems.filter(i => i.category === activeCategory);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => { setSaved(false); onClose(); }, 1000);
-  };
+  async function handleSave() {
+    setSaving(true);
+    await new Promise(r => setTimeout(r, 800));
+    setSaving(false);
+  }
+
+  const s = (style: React.CSSProperties) => style;
 
   return (
-    <div className="av-screen">
-      <div className="av-topbar">
-      <div style={{ width: 60 }} />
-        <span className="av-title">アバター</span>
-        <button className="av-save" onClick={handleSave}>
-          {saved ? '✓ 保存!' : '保存'}
-        </button>
+    <div style={{ position:'absolute', inset:0, background:'#0a0e1a', display:'flex', flexDirection:'column', overflow:'hidden', fontFamily:'sans-serif', color:'#e8d5a3' }}>
+
+      {/* ヘッダー */}
+      <div style={{ padding:'14px 16px', background:'linear-gradient(135deg,#0d1220,#1a0a2e)', borderBottom:'1px solid rgba(232,184,75,0.2)', flexShrink:0 }}>
+        <div style={{ fontSize:10, letterSpacing:4, color:'rgba(232,184,75,0.5)', marginBottom:2 }}>MY PAGE</div>
+        <div style={{ fontSize:18, color:'#e8b84b', fontFamily:'Georgia,serif', letterSpacing:2 }}>マイページ</div>
       </div>
 
-      {/* プレビュー */}
-      <div className="av-preview-wrap">
-        <div className="av-preview-card">
-          <div className="av-preview-bg">
-            <div className="av-preview-hat">{equipped['帽子']?.emoji ?? '　'}</div>
-            <div className="av-preview-face">🧝</div>
-            <div className="av-preview-bottom">
-              <span>{equipped['上着']?.emoji ?? '　'}</span>
-              <span>{equipped['靴']?.emoji ?? '　'}</span>
+      {/* プロフィールカード */}
+      <div style={{ padding:'16px', background:'linear-gradient(135deg,#0f1628,#1a0a2e)', borderBottom:'1px solid rgba(232,184,75,0.1)', flexShrink:0 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+          {/* アバター */}
+          <div style={{ position:'relative', flexShrink:0 }}>
+            <div style={{ width:72, height:72, borderRadius:'50%', border:'2px solid rgba(232,184,75,0.5)', overflow:'hidden', background:'rgba(0,0,0,0.3)', display:'flex', alignItems:'center', justifyContent:'center', animation:'floatAv 3s ease-in-out infinite' }}>
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="avatar" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                : <span style={{ fontSize:36 }}>👤</span>
+              }
             </div>
-            <div className="av-preview-acc">
-              <span>{equipped['アクセサリー']?.emoji ?? '　'}</span>
-              <span>{equipped['ペット']?.emoji ?? '　'}</span>
+            <div style={{ position:'absolute', bottom:0, right:0, background:'#e8b84b', color:'#1a0e00', fontSize:10, fontWeight:700, padding:'2px 5px', borderRadius:8 }}>
+              Lv.{profile?.adventure_level ?? 1}
             </div>
           </div>
-          <div className="av-preview-name">冒険者 Lv.12</div>
-          <div className="av-preview-stats">
-            <span>宝箱 47個</span>
-            <span>近畿ランク 3位</span>
+          {/* 情報 */}
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:17, fontWeight:700, color:'#e8d5a3', fontFamily:'Georgia,serif' }}>{profile?.username ?? '冒険者'}</div>
+            <div style={{ fontSize:11, color:'rgba(232,184,75,0.7)', marginTop:2 }}>{profile?.avatar_title ?? '新米冒険者'}</div>
+            <div style={{ display:'flex', gap:12, marginTop:6 }}>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>💰 {(profile?.gold ?? 0).toLocaleString()} G</div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>📦 宝箱 {items.length}個</div>
+            </div>
           </div>
-          {/* 装備中アイテム一覧 */}
-          <div className="av-equipped-list">
-            {CATEGORIES.map(cat => equipped[cat] && (
-              <div key={cat} className="av-equipped-item">
-                <span>{equipped[cat]!.emoji}</span>
-                <span className="av-equipped-name">{equipped[cat]!.name}</span>
-              </div>
-            ))}
+        </div>
+        {/* ゴールドバー */}
+        <div style={{ marginTop:12 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'rgba(232,184,75,0.5)', marginBottom:4 }}>
+            <span>次のレベルまで</span>
+            <span>{Math.min(items.length * 10, 100)}%</span>
+          </div>
+          <div style={{ height:4, background:'rgba(255,255,255,0.1)', borderRadius:2, overflow:'hidden' }}>
+            <div style={{ height:'100%', width:`${Math.min(items.length * 10, 100)}%`, background:'linear-gradient(to right,#e8b84b,#fff)', borderRadius:2, transition:'width 0.5s' }}/>
           </div>
         </div>
       </div>
 
-      {/* カテゴリタブ */}
-      <div className="av-tabs">
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat}
-            className={`av-tab ${activeCategory === cat ? 'active' : ''}`}
-            onClick={() => setActiveCategory(cat)}
-          >
-            {cat}
-            {equipped[cat] && <span className="av-tab-dot" />}
+      {/* メニュータブ */}
+      <div style={{ display:'flex', background:'rgba(0,0,0,0.3)', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0, overflowX:'auto' }}>
+        {MENU_ITEMS.map(m => (
+          <button key={m.id} onClick={() => setTab(m.id)} style={{ flex:1, minWidth:60, padding:'10px 4px', background:'transparent', border:'none', borderBottom:`2px solid ${tab===m.id?'#e8b84b':'transparent'}`, color:tab===m.id?'#e8b84b':'#4a5268', cursor:'pointer', fontSize:9, display:'flex', flexDirection:'column', alignItems:'center', gap:3, transition:'all 0.2s' }}>
+            <span style={{ fontSize:18 }}>{m.icon}</span>
+            {m.label}
           </button>
         ))}
       </div>
 
-      {/* アイテム一覧 */}
-      <div className="av-items-grid">
-        {filteredItems.length === 0 && (
-          <div className="av-empty">
-            <p>🔒</p>
-            <p>宝箱を開けてアイテムをゲットしよう！</p>
+      {/* コンテンツ */}
+      <div style={{ flex:1, overflowY:'auto' }}>
+
+        {/* 着せ替え */}
+        {tab === 'avatar' && (
+          <div style={{ padding:16 }}>
+            <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>カテゴリー ────────────</div>
+            <div style={{ display:'flex', gap:6, overflowX:'auto', marginBottom:16, paddingBottom:4 }}>
+              {WEARABLE_CATEGORIES.map(cat => (
+                <button key={cat} onClick={() => setActiveCategory(cat)} style={{ flexShrink:0, padding:'6px 12px', background:activeCategory===cat?'rgba(232,184,75,0.15)':'rgba(255,255,255,0.04)', border:`1px solid ${activeCategory===cat?'#e8b84b':'rgba(255,255,255,0.1)'}`, borderRadius:20, color:activeCategory===cat?'#e8b84b':'#e8d5a3', cursor:'pointer', fontSize:12, whiteSpace:'nowrap' }}>
+                  {cat}{equipped[cat] && <span style={{ marginLeft:4, color:'#e8b84b' }}>●</span>}
+                </button>
+              ))}
+            </div>
+            {filteredItems.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'40px 20px', opacity:0.4 }}>
+                <div style={{ fontSize:40, marginBottom:12 }}>🔒</div>
+                <p style={{ fontSize:13 }}>このカテゴリーのアイテムがありません</p>
+                <p style={{ fontSize:11, marginTop:4 }}>宝箱を開けてアイテムをゲットしよう！</p>
+              </div>
+            ) : (
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                {filteredItems.map(item => {
+                  const isEquipped = equipped[item.category as ItemCategory]?.id === item.id;
+                  return (
+                    <div key={item.id} onClick={() => setEquipped(p => ({...p, [item.category]:item}))} style={{ padding:12, background:isEquipped?'rgba(232,184,75,0.1)':'rgba(255,255,255,0.04)', border:`1px solid ${isEquipped?'#e8b84b':'rgba(255,255,255,0.08)'}`, borderRadius:10, cursor:'pointer', textAlign:'center', position:'relative' }}>
+                      <div style={{ fontSize:32, marginBottom:6 }}>{item.emoji}</div>
+                      <div style={{ fontSize:10, color:RARITY_COLORS[item.rarity as keyof typeof RARITY_COLORS], marginBottom:2 }}>{item.rarity}</div>
+                      <div style={{ fontSize:12, color:'#e8d5a3' }}>{item.name}</div>
+                      {isEquipped && <div style={{ position:'absolute', top:6, right:6, background:'#e8b84b', color:'#1a0e00', fontSize:9, padding:'2px 5px', borderRadius:6, fontWeight:700 }}>装備中</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <button onClick={handleSave} style={{ width:'100%', marginTop:16, padding:'13px', background:'linear-gradient(135deg,#c8900a,#e8b84b)', border:'none', borderRadius:8, color:'#1a0e00', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:'Georgia,serif' }}>
+              {saving ? '保存中...' : '💾 着せ替えを保存'}
+            </button>
           </div>
         )}
-        {filteredItems.map(item => {
-          const isEquipped = equipped[item.category]?.id === item.id;
-          return (
-            <div
-              key={item.id}
-              className={`av-item-card ${isEquipped ? 'equipped' : ''}`}
-              onClick={() => handleEquip(item)}
-            >
-              <div className="av-item-emoji">{item.emoji}</div>
-              <div
-                className="av-item-rarity"
-                style={{ color: RARITY_COLORS[item.rarity] }}
-              >
-                {item.rarity}
+
+        {/* お知らせ */}
+        {tab === 'notice' && (
+          <div style={{ padding:16 }}>
+            <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>お知らせ ──────────────</div>
+            {NOTICES.map(n => (
+              <div key={n.id} onClick={() => setNoticeOpen(noticeOpen===n.id?null:n.id)} style={{ marginBottom:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, overflow:'hidden', cursor:'pointer' }}>
+                <div style={{ padding:'12px 14px', display:'flex', alignItems:'center', gap:10 }}>
+                  {n.isNew && <div style={{ width:6, height:6, borderRadius:'50%', background:'#e8b84b', flexShrink:0 }}/>}
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:n.isNew?'#e8d5a3':'rgba(232,213,163,0.6)' }}>{n.title}</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{n.date}</div>
+                  </div>
+                  <span style={{ color:'rgba(255,255,255,0.3)', fontSize:12 }}>{noticeOpen===n.id?'▲':'▼'}</span>
+                </div>
+                {noticeOpen===n.id && (
+                  <div style={{ padding:'0 14px 14px', fontSize:13, color:'rgba(232,213,163,0.7)', lineHeight:1.6 }}>{n.body}</div>
+                )}
               </div>
-              <div className="av-item-name">{item.name}</div>
-              <div className="av-item-source">{item.source}</div>
-              {isEquipped && <div className="av-item-equipped-badge">装備中</div>}
+            ))}
+          </div>
+        )}
+
+        {/* ミッション */}
+        {tab === 'mission' && (
+          <div style={{ padding:16 }}>
+            <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>ミッション ────────────</div>
+            {MISSIONS.map(m => (
+              <div key={m.id} style={{ marginBottom:10, padding:14, background:m.done?'rgba(232,184,75,0.08)':'rgba(255,255,255,0.04)', border:`1px solid ${m.done?'rgba(232,184,75,0.3)':'rgba(255,255,255,0.08)'}`, borderRadius:10 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:8 }}>
+                  <div>
+                    <div style={{ fontSize:13, fontWeight:700, color:m.done?'#e8b84b':'#e8d5a3' }}>{m.done?'✅ ':''}{m.title}</div>
+                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>{m.desc}</div>
+                  </div>
+                  <div style={{ fontSize:12, color:'#e8b84b', whiteSpace:'nowrap', marginLeft:8 }}>+{m.reward.toLocaleString()}G</div>
+                </div>
+                <div style={{ height:4, background:'rgba(255,255,255,0.08)', borderRadius:2, overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${(m.progress/m.total)*100}%`, background:m.done?'#e8b84b':'rgba(232,184,75,0.5)', borderRadius:2, transition:'width 0.5s' }}/>
+                </div>
+                <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginTop:4, textAlign:'right' }}>{m.progress} / {m.total}</div>
+                {m.done && (
+                  <button style={{ width:'100%', marginTop:8, padding:'8px', background:'linear-gradient(135deg,#c8900a,#e8b84b)', border:'none', borderRadius:6, color:'#1a0e00', fontWeight:700, fontSize:12, cursor:'pointer' }}>
+                    報酬を受け取る
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* フレンド */}
+        {tab === 'friend' && (
+          <div style={{ padding:16 }}>
+            <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>フレンド ──────────────</div>
+            <div style={{ textAlign:'center', padding:'40px 20px', opacity:0.4 }}>
+              <div style={{ fontSize:48, marginBottom:12 }}>👥</div>
+              <p style={{ fontSize:14 }}>フレンド機能は近日公開予定です</p>
+              <p style={{ fontSize:12, marginTop:8 }}>お楽しみに！</p>
             </div>
-          );
-        })}
+          </div>
+        )}
+
+        {/* 設定 */}
+        {tab === 'setting' && (
+          <div style={{ padding:16 }}>
+            <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>設定 ──────────────────</div>
+            {[
+              { label:'プッシュ通知', desc:'宝箱情報などの通知を受け取る' },
+              { label:'位置情報', desc:'GPS機能を有効にする' },
+              { label:'サウンド', desc:'効果音・BGMのオン/オフ' },
+              { label:'ダークモード', desc:'画面の表示モード' },
+            ].map((s, i) => (
+              <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+                <div>
+                  <div style={{ fontSize:14, color:'#e8d5a3' }}>{s.label}</div>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{s.desc}</div>
+                </div>
+                <div style={{ width:44, height:24, borderRadius:12, background:'rgba(232,184,75,0.3)', position:'relative', cursor:'pointer' }}>
+                  <div style={{ width:20, height:20, borderRadius:'50%', background:'#e8b84b', position:'absolute', top:2, right:2, transition:'left 0.2s' }}/>
+                </div>
+              </div>
+            ))}
+            <div style={{ marginTop:20 }}>
+              <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>アカウント ────────────</div>
+              <button style={{ width:'100%', padding:'12px', background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:8, color:'#ef4444', cursor:'pointer', fontSize:13 }}>
+                アカウントを削除
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
+
+      <style>{`
+        @keyframes floatAv { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+      `}</style>
     </div>
   );
-};
-
-export default Avatar;
+}
