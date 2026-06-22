@@ -35,7 +35,7 @@ function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void
 }
 
 function makeIcon(type: ChestType, selected = false) {
-  const { color } = TYPE_CONFIG[type];
+    const { color } = TYPE_CONFIG[type] ?? { color: '#888', emoji: '📦' };
   const s = selected ? 52 : 40;
   const pulse = selected ? `
     <div style="
@@ -187,9 +187,9 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
             <MapContainer center={[35.5285, 139.5760]} zoom={15} style={{ height: '100%', width: '100%' }}>
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
               <ClickHandler onClick={handleMapClick} />
-              {chests.map(c => (
-                <Marker key={c.id} position={[c.lat, c.lng]}
-                  icon={makeIcon(c.type as ChestType, selected?.id === c.id)}
+              {chests.filter(c => TYPE_CONFIG[c.type as ChestType]).map(c => (
+  <Marker key={c.id} position={[c.lat, c.lng]}
+    icon={makeIcon(c.type as ChestType, selected?.id === c.id)}
                   eventHandlers={{ click: () => { setSelected(c); setEditing(false); } }} />
               ))}
               {editing && selected && selected.lat !== 0 && (
