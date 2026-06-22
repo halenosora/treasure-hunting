@@ -33,7 +33,7 @@ const HAIR_COLORS = [
 ];
 
 function getAvatarUrl(seed: string, style: string, skinColor: string, hairColor: string) {
-    return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=transparent&skin=${skinColor}&skinColor=${skinColor}&hairColor=${hairColor}&hair=${hairColor}&size=200`;
+    return `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}&size=200`;
   }
 
 export default function CharacterCreate({ userId, onComplete }: { userId: string; onComplete: () => void }) {
@@ -46,7 +46,7 @@ export default function CharacterCreate({ userId, onComplete }: { userId: string
   const [saving, setSaving] = useState(false);
 
   const avatarUrl = getAvatarUrl(seed, style, skinColor, hairColor);
-  const saveUrl = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=transparent&skinColor=${skinColor}&hairColor=${hairColor}`;
+  const saveUrl = `https://api.dicebear.com/7.x/${style}/svg?seed=${encodeURIComponent(seed)}`;
 
   async function handleSave() {
     setSaving(true);
@@ -140,8 +140,8 @@ export default function CharacterCreate({ userId, onComplete }: { userId: string
             <div>
               <div style={{ fontSize: 10, letterSpacing: 3, color: 'rgba(232,184,75,0.5)', marginBottom: 12, fontFamily: 'sans-serif' }}>アバタースタイル ────────</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                {STYLES.map(s => (
-                  <button key={s.id} onClick={() => setStyle(s.id)} style={{
+              {STYLES.map(s => (
+                  <button key={s.id} onClick={() => { setStyle(s.id); setSeed(prev => prev); }} style={{
                     padding: '8px 4px', textAlign: 'center',
                     background: style === s.id ? 'rgba(232,184,75,0.15)' : 'rgba(255,255,255,0.04)',
                     border: `1px solid ${style === s.id ? '#e8b84b' : 'rgba(232,184,75,0.15)'}`,
