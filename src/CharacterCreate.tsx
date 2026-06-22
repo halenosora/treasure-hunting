@@ -73,12 +73,12 @@ export default function CharacterCreate({ userId, onComplete }: { userId: string
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 99998, overflowY: 'auto',
+        position: 'fixed', inset: 0, zIndex: 99998, overflowY: 'scroll',
       background: '#1a1208', display: 'flex', flexDirection: 'column', alignItems: 'center',
       fontFamily: 'Georgia,serif', color: '#e8d5a3',
       backgroundImage: 'repeating-linear-gradient(0deg,rgba(232,184,75,0.03) 0px,rgba(232,184,75,0.03) 1px,transparent 1px,transparent 40px),repeating-linear-gradient(90deg,rgba(232,184,75,0.03) 0px,rgba(232,184,75,0.03) 1px,transparent 1px,transparent 40px)',
     }}>
-      <div style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', minHeight: '100vh', paddingBottom: 100 }}>
 
         {/* ヘッダー */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(232,184,75,0.2)', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -122,7 +122,7 @@ export default function CharacterCreate({ userId, onComplete }: { userId: string
         </div>
 
         {/* パネル */}
-        <div style={{ flex: 1, background: 'rgba(0,0,0,0.5)', borderTop: '1px solid rgba(232,184,75,0.2)', padding: '16px 20px', overflowY: 'auto', minHeight: 0 }}>
+        <div style={{ background: 'rgba(0,0,0,0.5)', borderTop: '1px solid rgba(232,184,75,0.2)', padding: '16px 20px' }}>
 
           {/* Step 0: 名前 */}
           {step === 0 && (

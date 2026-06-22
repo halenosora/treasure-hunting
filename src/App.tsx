@@ -231,7 +231,6 @@ useEffect(() => {
   }, []);
 
   // プロフィール取得
-  // プロフィール取得
   useEffect(() => {
     if (!user) return;
     supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
