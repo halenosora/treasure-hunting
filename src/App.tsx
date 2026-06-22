@@ -20,6 +20,12 @@ interface TreasureChest {
   type: TreasureType;
   lat: number;
   lng: number;
+  shop_name?: string;
+  shop_photo?: string;
+  shop_url?: string;
+  shop_tel?: string;
+  description?: string;
+  gold_amount?: number;
 }
 
 interface RewardResult {
@@ -53,19 +59,58 @@ const navItems: { key: NavItem; label: string; icon: string }[] = [
 ];
 
 // ── ユーティリティ ───────────────────────────────────────────
-function createTreasureIcon(type: TreasureType): L.DivIcon {
+function createTreasureIcon(type: TreasureType, selected = false): L.DivIcon {
   const cfg = TREASURE_CONFIG[type];
-  let shape = '';
-  if      (cfg.shape === 'circle')  shape = `<circle cx="16" cy="16" r="13" fill="${cfg.color}" stroke="#fff" stroke-width="2"/>`;
-  else if (cfg.shape === 'square')  shape = `<rect x="3" y="3" width="26" height="26" rx="4" fill="${cfg.color}" stroke="#fff" stroke-width="2"/>`;
-  else if (cfg.shape === 'star')    shape = `<polygon points="16,2 20,12 31,12 22,19 25,30 16,23 7,30 10,19 1,12 12,12" fill="${cfg.color}" stroke="#fff" stroke-width="1.5"/>`;
-  else if (cfg.shape === 'diamond') shape = `<polygon points="16,2 30,16 16,30 2,16" fill="${cfg.color}" stroke="#fff" stroke-width="2"/>`;
-  else if (cfg.shape === 'crown')   shape = `<polygon points="2,26 2,12 8,18 16,6 24,18 30,12 30,26" fill="${cfg.color}" stroke="#fff" stroke-width="2"/>`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">${shape}</svg>`;
+  const s = selected ? 52 : 40;
+  const pulseAnim = selected ? `
+    <div style="
+      position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      width:${s * 2}px;height:${s * 2}px;
+      border-radius:50%;
+      background:${cfg.color}22;
+      animation:chestPulse 1.5s ease-out infinite;
+    "></div>
+    <div style="
+      position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      width:${s * 1.4}px;height:${s * 1.4}px;
+      border-radius:50%;
+      border:1px solid ${cfg.color}66;
+      animation:chestPulse 1.5s ease-out infinite 0.5s;
+    "></div>` : '';
   return L.divIcon({
-    className: `chest-marker chest-marker--${cfg.shape}`,
-    html: `<div class="chest-marker-wrap">${svg}</div>`,
-    iconSize: [40, 40], iconAnchor: [20, 20],
+    className: '',
+    html: `
+      <div style="position:relative;width:${s}px;height:${s}px;">
+        ${pulseAnim}
+        <div style="
+          position:absolute;top:50%;left:50%;
+          transform:translate(-50%,-50%);
+          width:${s}px;height:${s}px;
+          border-radius:50%;
+          background:radial-gradient(circle at 35% 35%, ${cfg.color}ff, ${cfg.color}66);
+          border:2px solid ${cfg.color};
+          box-shadow:0 0 ${selected ? 24 : 12}px ${cfg.color}99,
+                     0 0 ${selected ? 48 : 24}px ${cfg.color}44;
+          display:flex;align-items:center;justify-content:center;
+        ">
+          <div style="
+            width:${s * 0.38}px;height:${s * 0.38}px;
+            border-radius:50%;
+            background:white;
+            opacity:0.85;
+            box-shadow:0 0 8px white;
+          "></div>
+        </div>
+      </div>
+      <style>
+        @keyframes chestPulse {
+          0%{transform:translate(-50%,-50%) scale(0.8);opacity:0.8}
+          100%{transform:translate(-50%,-50%) scale(1.8);opacity:0}
+        }
+      </style>`,
+    iconSize: [s, s], iconAnchor: [s / 2, s / 2],
   });
 }
 
@@ -125,13 +170,19 @@ useEffect(() => {
     .then(({ data }) => {
       if (data) {
         const validTypes = Object.keys(TREASURE_CONFIG) as TreasureType[];
-setTreasures(data.map(c => ({
-  id: c.id,
-  name: c.name,
-  type: validTypes.includes(c.type as TreasureType) ? c.type as TreasureType : '無料クーポン',
-  lat: c.lat,
-  lng: c.lng,
-})));
+        setTreasures(data.map(c => ({
+          id: c.id,
+          name: c.name,
+          type: validTypes.includes(c.type as TreasureType) ? c.type as TreasureType : '地域クーポン',
+          lat: c.lat,
+          lng: c.lng,
+          shop_name:   c.shop_name   ?? '',
+          shop_photo:  c.shop_photo  ?? '',
+          shop_url:    c.shop_url    ?? '',
+          shop_tel:    c.shop_tel    ?? '',
+          description: c.description ?? '',
+          gold_amount: c.gold_amount ?? 100,
+        })));
       }
     });
 }, []);
@@ -374,28 +425,88 @@ setTreasures(data.map(c => ({
 
       {/* ── 宝箱詳細 ── */}
       {selectedChest && (
-        <div className="chest-detail-overlay" onClick={() => setSelectedChest(null)}>
-          <div className="chest-detail-card" onClick={e => e.stopPropagation()}>
-            <button className="chest-detail-close" onClick={() => setSelectedChest(null)}>✕</button>
+  <div className="chest-detail-overlay" onClick={() => setSelectedChest(null)}>
+    <div className="chest-detail-card" onClick={e => e.stopPropagation()}>
+      <button className="chest-detail-close" onClick={() => setSelectedChest(null)}>✕</button>
 
-            <div className="chest-detail-icon">
-              {TREASURE_CONFIG[selectedChest.type].emoji}
-            </div>
-            <h2 className="chest-detail-name">{selectedChest.name}</h2>
-            <div className="chest-detail-type" style={{ color: TREASURE_CONFIG[selectedChest.type].color }}>
-              {TREASURE_CONFIG[selectedChest.type].label}
-            </div>
-            <div className="chest-detail-dist">
-              📍 現在地から {treasuresWithDist.find(t => t.id === selectedChest.id)?.distance ?? '---'}
-            </div>
+      {/* 光るアイコン */}
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 16px' }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: '50%',
+          background: `radial-gradient(circle at 35% 35%, ${TREASURE_CONFIG[selectedChest.type].color}ff, ${TREASURE_CONFIG[selectedChest.type].color}66)`,
+          border: `2px solid ${TREASURE_CONFIG[selectedChest.type].color}`,
+          boxShadow: `0 0 24px ${TREASURE_CONFIG[selectedChest.type].color}99, 0 0 48px ${TREASURE_CONFIG[selectedChest.type].color}44`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'white', opacity: 0.85, boxShadow: '0 0 8px white' }} />
+        </div>
+      </div>
 
-            <div className="chest-detail-items">
-              <p className="chest-detail-items-title">獲得できるアイテム例</p>
-              {TREASURE_CONFIG[selectedChest.type].items.map((item, i) => (
-                <div key={i} className="chest-detail-item">
-                  <span>✦</span><span>{item}</span>
-                </div>
-              ))}
+      <h2 className="chest-detail-name">{selectedChest.name}</h2>
+      <div className="chest-detail-type" style={{ color: TREASURE_CONFIG[selectedChest.type].color }}>
+        {TREASURE_CONFIG[selectedChest.type].label}
+      </div>
+      <div className="chest-detail-dist">
+        📍 現在地から {treasuresWithDist.find(t => t.id === selectedChest.id)?.distance ?? '---'}
+      </div>
+
+      {/* 店舗写真 */}
+      {selectedChest.shop_photo && (
+        <div style={{ margin: '12px 0', borderRadius: 12, overflow: 'hidden', height: 140 }}>
+          <img src={selectedChest.shop_photo} alt={selectedChest.shop_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+      )}
+
+      {/* 店舗情報 */}
+      {(selectedChest.shop_name || selectedChest.shop_tel || selectedChest.shop_url) && (
+        <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: '12px 14px', margin: '10px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {selectedChest.shop_name && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700 }}>
+              🏪 {selectedChest.shop_name}
+            </div>
+          )}
+          {selectedChest.description && (
+            <div style={{ fontSize: 12, opacity: 0.7, lineHeight: 1.6 }}>{selectedChest.description}</div>
+          )}
+          {selectedChest.shop_tel && (
+            <a href={`tel:${selectedChest.shop_tel}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#4CAF50', textDecoration: 'none' }}>
+              📞 {selectedChest.shop_tel}
+            </a>
+          )}
+          {selectedChest.shop_url && (
+            <a href={selectedChest.shop_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#3b82f6', textDecoration: 'none' }}>
+              🔗 公式サイトを見る
+            </a>
+          )}
+        </div>
+      )}
+
+      <div style={{ fontSize: 13, opacity: 0.6, margin: '4px 0 12px', textAlign: 'center' }}>
+        💰 獲得ゴール：{selectedChest.gold_amount ?? 100}G
+      </div>
+
+      <div className="chest-detail-btns">
+        <button
+          className="chest-detail-route-btn"
+          onClick={() => {
+            const url = playerPos
+              ? `https://www.google.com/maps/dir/${playerPos[0]},${playerPos[1]}/${selectedChest.lat},${selectedChest.lng}`
+              : `https://www.google.com/maps/dir//${selectedChest.lat},${selectedChest.lng}`;
+            window.open(url, '_blank');
+          }}
+        >
+          🗺️ 経路案内
+        </button>
+        <button
+          className="chest-detail-ar-btn"
+          onClick={() => { setSelectedChest(null); handleOpenTreasure(selectedChest); }}
+        >
+          📷 ARで開ける
+        </button>
+      </div>
+    </div>
+  </div>
+)}
             </div>
 
             <div className="chest-detail-btns">
