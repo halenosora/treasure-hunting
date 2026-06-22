@@ -250,7 +250,8 @@ useEffect(() => {
       distance:  formatDistance(calcDistanceMeters(mapCenter[0], mapCenter[1], t.lat, t.lng)),
       distanceM: calcDistanceMeters(mapCenter[0], mapCenter[1], t.lat, t.lng),
     })).sort((a, b) => a.distanceM - b.distanceM),
-  [mapCenter]);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ [mapCenter]);
 
   // ── ハンドラ ───────────────────────────────────────────────
 

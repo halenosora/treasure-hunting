@@ -21,12 +21,13 @@ const ARCamera: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       setError('カメラへのアクセスが必要です');
     });
     return () => {
-      if (videoRef.current?.srcObject) {
-        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const video = videoRef.current;
+      if (video?.srcObject) {
+        const tracks = (video.srcObject as MediaStream).getTracks();
         tracks.forEach(t => t.stop());
       }
     };
-  }, []);
 
   return (
     <div className="ar-screen">

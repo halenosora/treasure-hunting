@@ -27,7 +27,8 @@ const Items: React.FC<ItemsProps> = ({ userId, onClose }) => {
 
   useEffect(() => {
     loadItems();
-  }, [userId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [userId]);
 
   const loadItems = async () => {
     setLoading(true);
