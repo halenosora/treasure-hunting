@@ -1,360 +1,601 @@
-import React, { useState, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { supabase } from './supabase';
+import ARCamera from './ARCamera';
+import Avatar from './Avatar';
+import Ranking from './Ranking';
+import Auth from './Auth';
+import Items from './ItemsScreen';
+import AdminPage from './AdminPage';
+import SplashScreen from './SplashScreen';
+import CharacterCreate from './CharacterCreate';
+import './App.css';
 
-interface CharOpts {
-  username: string;
-  face_type: number;
-  hair_type: number;
-  hair_color: string;
-  skin_color: string;
-  body_type: number;
-  beard_type: number;
+// ── 型定義 ──────────────────────────────────────────────────
+type NavItem = 'map' | 'avatar' | 'rank' | 'item';
+type TreasureType = '地域クーポン' | 'ゲームアイテム' | 'スポンサード' | '期間限定' | 'レジェンド';
+
+interface TreasureChest {
+  id: string | number;
+  name: string;
+  type: TreasureType;
+  lat: number;
+  lng: number;
+  shop_name?: string;
+  shop_photo?: string;
+  shop_url?: string;
+  shop_tel?: string;
+  description?: string;
+  gold_amount?: number;
+  unlock_mode?: string;
+  appear_radius?: number;
+  qr_code?: string;
 }
 
-const HAIR_COLORS = [
-  '#1a0a00','#3d2b1f','#8b5e3c','#c8a96e','#f0d080',
-  '#d4607a','#5b8dd9','#7b68ee','#e8e8e8','#ff6b35',
+interface RewardResult {
+  itemName: string;
+  gold: number;
+  treasureName: string;
+  type: TreasureType;
+}
+
+// ── 定数 ────────────────────────────────────────────────────
+const DEFAULT_CENTER: [number, number] = [34.6873, 135.5262];
+const MIN_ZOOM = 15;
+const DEFAULT_ZOOM = 15;
+
+const TREASURE_CONFIG: Record<TreasureType, {
+  color: string; emoji: string; shape: string; label: string; items: string[];
+}> = {
+  地域クーポン:  { color: '#22c55e', emoji: '🟢', shape: 'circle',  label: '地域クーポン',  items: ['地域振興券500円', '観光割引クーポン', '飲食店10%オフ', '温泉入浴券'] },
+  ゲームアイテム: { color: '#3b82f6', emoji: '🔵', shape: 'square',  label: 'ゲームアイテム', items: ['強化石', '経験値アップ薬', '魔法の地図', 'HP回復ポーション'] },
+  スポンサード:  { color: '#e8b84b', emoji: '⭐', shape: 'star',    label: 'スポンサード',  items: ['NIKEシューズNFT', 'スタバ限定NFT', 'コラボ限定バッジ', '企業限定クーポン'] },
+  期間限定:     { color: '#a855f7', emoji: '💜', shape: 'diamond', label: '期間限定',     items: ['ハロウィン魔女帽', '正月金の鏡餅', 'クリスマスベル', '夏祭り花火'] },
+  レジェンド:   { color: '#ef4444', emoji: '👑', shape: 'crown',   label: 'レジェンド',   items: ['伝説の剣NFT', '黄金の鎧NFT', 'ドラゴンの翼NFT', '神々の指輪NFT'] },
+};
+
+const navItems: { key: NavItem; label: string }[] = [
+  { key: 'map',    label: 'マップ'   },
+  { key: 'avatar', label: 'マイページ' },
+  { key: 'rank',   label: 'ランク'   },
+  { key: 'item',   label: 'アイテム' },
 ];
-const HAIR_COLOR_LABELS = ['黒','焦茶','茶','金茶','金','ピンク','青','紫','白','橙'];
-const SKIN_COLORS = ['#fde8d0','#f5c5a3','#e8a882','#c68642','#8d5524'];
-const SKIN_LABELS  = ['白肌','普通','小麦','褐色','濃褐'];
 
-const STEPS = ['名前','顔型','髪型','髪色','肌色','体型','ひげ','確認'];
-
-// ── SVGキャラクター ────────────────────────────────────────
-function CharSVG({ opts }: { opts: CharOpts }) {
-  const sk = opts.skin_color;
-  const hc = opts.hair_color;
-  const bw = opts.body_type === 1 ? 52 : opts.body_type === 2 ? 60 : 70;
-  const bx = 60 - bw / 2;
-
-  // 顔の輪郭
-  const faces = [
-    'M35,70 Q35,42 60,40 Q85,42 85,70 Q85,102 60,106 Q35,102 35,70 Z',
-    'M38,75 Q38,42 60,38 Q82,42 82,75 Q82,108 60,112 Q38,108 38,75 Z',
-    'M34,68 Q36,42 60,40 Q84,42 86,68 L84,102 Q60,108 36,102 Z',
-    'M38,72 Q40,44 60,40 Q80,44 82,72 Q80,104 60,106 Q40,104 38,72 Z',
-  ];
-  const facePath = faces[opts.face_type - 1] ?? faces[0];
-
-  // 髪型
-  const hairs = [
-    'M33,70 Q33,36 60,34 Q87,36 87,70 Q80,52 60,50 Q40,52 33,70 Z',
-    'M32,72 Q32,34 60,32 Q88,34 88,72 L88,120 Q74,112 60,116 Q46,112 32,120 Z',
-    'M32,72 Q32,34 60,32 Q88,34 88,72 L88,110 Q80,100 72,108 Q66,116 60,108 Q54,100 48,108 Q40,116 32,110 Z',
-    'M33,70 Q33,36 60,34 Q87,36 87,70 Q80,52 60,50 Q40,52 33,70 Z M82,50 Q96,44 100,58 Q96,66 88,60 Z',
-    'M33,70 Q33,36 60,34 Q87,36 87,70 L87,95 Q60,100 33,95 Z',
-    'M34,65 Q36,36 60,34 Q84,36 86,65 Q70,44 50,46 Z',
-  ];
-  const hairPath = hairs[opts.hair_type - 1] ?? hairs[0];
-
-  return (
-    <svg viewBox="0 0 120 290" width="130" height="290" style={{ filter:'drop-shadow(0 8px 20px rgba(0,0,0,0.6))' }}>
-      {/* 影 */}
-      <ellipse cx="60" cy="282" rx="30" ry="6" fill="rgba(0,0,0,0.45)"/>
-      {/* 足 */}
-      <rect x="38" y="205" width="16" height="65" rx="7" fill="#2a1f3d"/>
-      <rect x="66" y="205" width="16" height="65" rx="7" fill="#2a1f3d"/>
-      {/* 靴 */}
-      <ellipse cx="46" cy="268" rx="12" ry="6" fill="#110d1a"/>
-      <ellipse cx="74" cy="268" rx="12" ry="6" fill="#110d1a"/>
-      {/* 胴体 */}
-      <path d={`M${bx},132 Q${bx-6},165 ${bx-2},208 L${bx+bw+2},208 Q${bx+bw+6},165 ${bx+bw},132 Q${60+bw*0.25},120 60,118 Q${60-bw*0.25},120 ${bx},132 Z`}
-        fill="#3d2b6b"/>
-      {/* 腕 */}
-      <path d={`M${bx+2},138 Q${bx-18},158 ${bx-14},184 Q${bx-10},190 ${bx-6},186 Q${bx-4},162 ${bx+10},146 Z`} fill="#3d2b6b"/>
-      <path d={`M${bx+bw-2},138 Q${bx+bw+18},158 ${bx+bw+14},184 Q${bx+bw+10},190 ${bx+bw+6},186 Q${bx+bw+4},162 ${bx+bw-10},146 Z`} fill="#3d2b6b"/>
-      {/* 手 */}
-      <ellipse cx={bx-12} cy="188" rx="7" ry="8" fill={sk}/>
-      <ellipse cx={bx+bw+12} cy="188" rx="7" ry="8" fill={sk}/>
-      {/* 首 */}
-      <rect x="53" y="108" width="14" height="18" rx="6" fill={sk}/>
-      {/* 顔 */}
-      <path d={facePath} fill={sk}/>
-      {/* 耳 */}
-      <ellipse cx="34" cy="74" rx="5" ry="7" fill={sk}/>
-      <ellipse cx="86" cy="74" rx="5" ry="7" fill={sk}/>
-      {/* 眉 */}
-      <path d="M43,61 Q50,57 57,61" fill="none" stroke={hc} strokeWidth="1.8" strokeLinecap="round"/>
-      <path d="M63,61 Q70,57 77,61" fill="none" stroke={hc} strokeWidth="1.8" strokeLinecap="round"/>
-      {/* 目白目 */}
-      <ellipse cx="50" cy="70" rx="7" ry="8" fill="white"/>
-      <ellipse cx="70" cy="70" rx="7" ry="8" fill="white"/>
-      {/* 瞳 */}
-      <ellipse cx="51" cy="71" rx="5" ry="6" fill="#1a0a00"/>
-      <ellipse cx="71" cy="71" rx="5" ry="6" fill="#1a0a00"/>
-      <ellipse cx="52" cy="69" rx="2" ry="2" fill="white"/>
-      <ellipse cx="72" cy="69" rx="2" ry="2" fill="white"/>
-      {/* まつ毛 */}
-      <path d="M43,63 Q50,59 57,63" fill="none" stroke="#0a0500" strokeWidth="1.5"/>
-      <path d="M63,63 Q70,59 77,63" fill="none" stroke="#0a0500" strokeWidth="1.5"/>
-      {/* 鼻 */}
-      <path d="M57,80 Q60,85 63,80" fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="1.2"/>
-      {/* 口 */}
-      <path d="M50,92 Q60,100 70,92" fill="none" stroke="rgba(0,0,0,0.28)" strokeWidth="1.8" strokeLinecap="round"/>
-      {/* 頬紅 */}
-      <ellipse cx="41" cy="82" rx="9" ry="5" fill="#ff8888" opacity="0.2"/>
-      <ellipse cx="79" cy="82" rx="9" ry="5" fill="#ff8888" opacity="0.2"/>
-      {/* ひげ */}
-      {opts.beard_type === 1 && (
-        <g opacity="0.55">{[46,49,52,55,58,61,64,67,70,73].map(x=>(
-          <line key={x} x1={x} y1="92" x2={x} y2="96" stroke={hc} strokeWidth="0.7"/>
-        ))}</g>
-      )}
-      {opts.beard_type === 2 && (
-        <path d="M50,93 Q60,100 70,93 Q67,104 60,105 Q53,104 50,93 Z" fill={hc} opacity="0.75"/>
-      )}
-      {opts.beard_type === 3 && (
-        <path d="M48,93 Q60,102 72,93 Q70,112 60,115 Q50,112 48,93 Z" fill={hc} opacity="0.7"/>
-      )}
-      {/* 髪（後） */}
-      <path d={hairPath} fill={hc} opacity="0.95"/>
-      {/* 服の紋様 */}
-      <path d="M55,140 L60,172 L65,140" fill="none" stroke="rgba(232,184,75,0.35)" strokeWidth="1.2"/>
-      <path d="M46,148 L74,148" fill="none" stroke="rgba(232,184,75,0.25)" strokeWidth="0.8"/>
-      {/* ベルト */}
-      <rect x={bx} y="200" width={bw} height="9" rx="3" fill="#1a0e00"/>
-      <rect x="55" y="199" width="10" height="11" rx="2" fill="#e8b84b"/>
-      {/* ハイライト */}
-      <ellipse cx="44" cy="56" rx="6" ry="4" fill="white" opacity="0.15" transform="rotate(-15,44,56)"/>
-    </svg>
-  );
-}
-
-// ── メイン ─────────────────────────────────────────────────
-export default function CharacterCreate({ userId, onComplete }: { userId: string; onComplete: () => void }) {
-  const [step, setSt]   = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [opts, setOpts] = useState<CharOpts>({
-    username:'', face_type:1, hair_type:1,
-    hair_color:'#3d2b1f', skin_color:'#f5c5a3',
-    body_type:2, beard_type:0,
-  });
-
-  const set = useCallback((k: keyof CharOpts, v: any) => setOpts(o => ({...o, [k]:v})), []);
-
-  const canNext = step !== 0 || opts.username.trim().length > 0;
-
-  async function handleSave() {
-    setSaving(true);
-    await supabase.from('profiles').upsert({
-      id: userId, username: opts.username,
-      face_type: opts.face_type, hair_type: opts.hair_type,
-      hair_color: opts.hair_color, skin_color: opts.skin_color,
-      body_type: opts.body_type, beard_type: opts.beard_type,
-      avatar_title:'新米冒険者', adventure_level:1,
-    });
-    setSaving(false);
-    onComplete();
-  }
-
-  const inp: React.CSSProperties = {
-    width:'100%', padding:'14px 16px',
-    background:'rgba(255,255,255,0.06)',
-    border:'1px solid rgba(232,184,75,0.3)', borderRadius:6,
-    color:'#e8d5a3', fontSize:16, outline:'none',
-    fontFamily:'sans-serif', boxSizing:'border-box',
-  };
-
-  const optBtn = (sel: boolean): React.CSSProperties => ({
-    padding:'12px 6px', textAlign:'center',
-    background: sel ? 'rgba(232,184,75,0.15)' : 'rgba(255,255,255,0.04)',
-    border: `1px solid ${sel ? '#e8b84b' : 'rgba(232,184,75,0.15)'}`,
-    borderRadius:6, color: sel ? '#e8b84b' : '#e8d5a3',
-    cursor:'pointer', fontSize:12, fontFamily:'sans-serif',
-    transition:'all 0.2s',
-  });
-
-  return (
-    <div style={{
-      position:'fixed', inset:0, zIndex:99998, overflowY:'auto',
-      background:'#1a1208',
-      backgroundImage:'repeating-linear-gradient(0deg,rgba(232,184,75,0.03) 0px,rgba(232,184,75,0.03) 1px,transparent 1px,transparent 40px),repeating-linear-gradient(90deg,rgba(232,184,75,0.03) 0px,rgba(232,184,75,0.03) 1px,transparent 1px,transparent 40px)',
-      display:'flex', flexDirection:'column', alignItems:'center',
-      fontFamily:'Georgia,serif', color:'#e8d5a3',
-    }}>
-      <div style={{ width:'100%', maxWidth:480, display:'flex', flexDirection:'column', minHeight:'100vh' }}>
-
-        {/* ヘッダー */}
-        <div style={{ padding:'16px 20px 12px', borderBottom:'1px solid rgba(232,184,75,0.2)', background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-          <div>
-            <div style={{ fontSize:10, letterSpacing:4, color:'rgba(232,184,75,0.5)' }}>CHARACTER CREATION</div>
-            <div style={{ fontSize:18, color:'#e8b84b', letterSpacing:2, marginTop:2 }}>冒険者を作ろう</div>
-          </div>
-          <div style={{ textAlign:'right' }}>
-            <div style={{ fontSize:10, color:'rgba(232,184,75,0.4)', letterSpacing:2 }}>STEP</div>
-            <div style={{ fontSize:22, color:'#e8b84b' }}>{step+1} / {STEPS.length}</div>
-          </div>
-        </div>
-
-        {/* プログレス */}
-        <div style={{ display:'flex', alignItems:'center', gap:6, padding:'10px 20px', background:'rgba(0,0,0,0.3)', flexShrink:0 }}>
-          {STEPS.map((s, i) => (
-            <React.Fragment key={i}>
-              <div style={{
-                width:8, height:8, borderRadius:'50%', flexShrink:0, transition:'all 0.3s',
-                background: i <= step ? '#e8b84b' : 'rgba(232,184,75,0.2)',
-                border: `1px solid ${i <= step ? '#e8b84b' : 'rgba(232,184,75,0.3)'}`,
-                boxShadow: i === step ? '0 0 8px #e8b84b' : 'none',
-              }}/>
-              {i < STEPS.length-1 && <div style={{ flex:1, height:1, background:'rgba(232,184,75,0.15)' }}/>}
-            </React.Fragment>
-          ))}
-          <span style={{ fontSize:11, color:'rgba(232,184,75,0.5)', letterSpacing:2, marginLeft:8, whiteSpace:'nowrap' }}>{STEPS[step]}</span>
-        </div>
-
-        {/* キャラクター */}
-        <div style={{ height:300, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', flexShrink:0 }}>
-          <div style={{ position:'absolute', width:160, height:160, borderRadius:'50%', background:'radial-gradient(circle,rgba(232,184,75,0.08) 0%,transparent 70%)', animation:'glowP 3s ease-in-out infinite' }}/>
-          <div style={{ animation:'floatP 3s ease-in-out infinite' }}>
-            <CharSVG opts={opts}/>
-          </div>
-        </div>
-
-        {/* パネル */}
-        <div style={{ flex:1, background:'rgba(0,0,0,0.5)', borderTop:'1px solid rgba(232,184,75,0.2)', padding:'16px 20px' }}>
-
-          {/* Step 0: 名前 */}
-          {step === 0 && (
-            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-              <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:4 }}>冒険者の名前 ──────────</div>
-              <input style={inp} value={opts.username} maxLength={16}
-                placeholder="ニックネームを入力（最大16文字）"
-                onChange={e => set('username', e.target.value)} autoFocus/>
-              <p style={{ fontSize:11, color:'rgba(232,184,75,0.4)', fontFamily:'sans-serif' }}>この名前はランキングや他のプレイヤーに表示されます</p>
-            </div>
-          )}
-
-          {/* Step 1: 顔型 */}
-          {step === 1 && (
-            <>
-              <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>顔の輪郭 ──────────────</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                {['丸顔','面長','四角顔','シャープ'].map((l,i) => (
-                  <button key={i} onClick={() => set('face_type', i+1)} style={optBtn(opts.face_type===i+1)}>{l}</button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Step 2: 髪型 */}
-          {step === 2 && (
-            <>
-              <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>髪型 ──────────────────</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
-                {['ショート','ロング','ウェーブ','ポニテ','ボブ','オールバック'].map((l,i) => (
-                  <button key={i} onClick={() => set('hair_type', i+1)} style={optBtn(opts.hair_type===i+1)}>{l}</button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Step 3: 髪色 */}
-          {step === 3 && (
-            <>
-              <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>髪の色 ────────────────</div>
-              <div style={{ display:'flex', flexWrap:'wrap', gap:12 }}>
-                {HAIR_COLORS.map((c,i) => (
-                  <div key={c} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer' }} onClick={() => set('hair_color', c)}>
-                    <div style={{ width:40, height:40, borderRadius:'50%', background:c, border:`2px solid ${opts.hair_color===c?'#e8b84b':'rgba(255,255,255,0.1)'}`, boxShadow:opts.hair_color===c?`0 0 10px ${c}`:'none', transition:'all 0.2s', transform:opts.hair_color===c?'scale(1.15)':'scale(1)' }}/>
-                    <span style={{ fontSize:10, color:'rgba(232,184,75,0.6)', fontFamily:'sans-serif' }}>{HAIR_COLOR_LABELS[i]}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Step 4: 肌色 */}
-          {step === 4 && (
-            <>
-              <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>肌の色 ────────────────</div>
-              <div style={{ display:'flex', gap:16, justifyContent:'center', flexWrap:'wrap' }}>
-                {SKIN_COLORS.map((c,i) => (
-                  <div key={c} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, cursor:'pointer' }} onClick={() => set('skin_color', c)}>
-                    <div style={{ width:52, height:52, borderRadius:'50%', background:c, border:`3px solid ${opts.skin_color===c?'#e8b84b':'rgba(255,255,255,0.1)'}`, boxShadow:opts.skin_color===c?'0 0 14px rgba(232,184,75,0.5)':'none', transition:'all 0.2s', transform:opts.skin_color===c?'scale(1.12)':'scale(1)' }}/>
-                    <span style={{ fontSize:11, color:'rgba(232,184,75,0.6)', fontFamily:'sans-serif' }}>{SKIN_LABELS[i]}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Step 5: 体型 */}
-          {step === 5 && (
-            <>
-              <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>体型 ──────────────────</div>
-              <div style={{ display:'flex', gap:10 }}>
-                {['スリム','普通','がっちり'].map((l,i) => (
-                  <button key={i} onClick={() => set('body_type', i+1)} style={{ ...optBtn(opts.body_type===i+1), flex:1, padding:'20px 8px', fontSize:13 }}>
-                    <div style={{ fontSize:28, marginBottom:8 }}>{i===0?'🧍':i===1?'🚶':'💪'}</div>{l}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Step 6: ひげ */}
-          {step === 6 && (
-            <>
-              <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>ひげ ──────────────────</div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                {[['なし','😊'],['無精ひげ','🧔'],['口ひげ','👨'],['あごひげ','🧔‍♂️']].map(([l,e],i) => (
-                  <button key={i} onClick={() => set('beard_type', i)} style={{ ...optBtn(opts.beard_type===i), padding:'16px 8px', fontSize:13 }}>
-                    <div style={{ fontSize:26, marginBottom:6 }}>{e}</div>{l}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* Step 7: 確認 */}
-          {step === 7 && (
-            <>
-              <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>確認 ──────────────────</div>
-              <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:8, padding:16, marginBottom:12 }}>
-                {[
-                  ['冒険者名', opts.username],
-                  ['顔型', ['丸顔','面長','四角顔','シャープ'][opts.face_type-1]],
-                  ['髪型', ['ショート','ロング','ウェーブ','ポニテ','ボブ','オールバック'][opts.hair_type-1]],
-                  ['体型', ['スリム','普通','がっちり'][opts.body_type-1]],
-                  ['ひげ', ['なし','無精ひげ','口ひげ','あごひげ'][opts.beard_type]],
-                ].map(([l,v]) => (
-                  <div key={l} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid rgba(255,255,255,0.06)', fontSize:13, fontFamily:'sans-serif' }}>
-                    <span style={{ color:'rgba(232,184,75,0.5)' }}>{l}</span>
-                    <span style={{ color:'#e8d5a3' }}>{v}</span>
-                  </div>
-                ))}
-              </div>
-              <p style={{ fontSize:12, color:'rgba(232,184,75,0.5)', textAlign:'center', fontFamily:'sans-serif' }}>
-                「{opts.username}」として冒険を始めましょう！
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* ボタン */}
-        <div style={{ display:'flex', gap:10, padding:'14px 20px', background:'rgba(0,0,0,0.6)', borderTop:'1px solid rgba(232,184,75,0.15)', flexShrink:0 }}>
-          {step > 0 && (
-            <button onClick={() => setSt(s=>s-1)} style={{ flex:1, padding:'13px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(232,184,75,0.2)', borderRadius:6, color:'rgba(232,184,75,0.7)', cursor:'pointer', fontSize:13, fontFamily:'Georgia,serif', letterSpacing:1 }}>
-              ← 戻る
-            </button>
-          )}
-          {step < 7 ? (
-            <button onClick={() => { if(canNext) setSt(s=>s+1); }} disabled={!canNext} style={{ flex:2, padding:'13px', background: canNext ? 'linear-gradient(135deg,#c8900a,#e8b84b)' : 'rgba(255,255,255,0.1)', border:'none', borderRadius:6, color: canNext ? '#1a0e00' : 'rgba(255,255,255,0.3)', cursor: canNext ? 'pointer' : 'not-allowed', fontSize:14, fontWeight:700, fontFamily:'Georgia,serif', letterSpacing:2 }}>
-              次へ →
-            </button>
-          ) : (
-            <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:'13px', background:'linear-gradient(135deg,#c8900a,#e8b84b)', border:'none', borderRadius:6, color:'#1a0e00', cursor:'pointer', fontSize:14, fontWeight:800, fontFamily:'Georgia,serif', letterSpacing:2, boxShadow:'0 4px 16px rgba(232,184,75,0.4)' }}>
-              {saving ? '作成中...' : '⚔️ 冒険を始める！'}
-            </button>
-          )}
+// ── ユーティリティ ───────────────────────────────────────────
+function createTreasureIcon(type: TreasureType, selected = false): L.DivIcon {
+  const cfg = TREASURE_CONFIG[type];
+  const s = selected ? 52 : 40;
+  const pulseAnim = selected ? `
+    <div style="
+      position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      width:${s * 2}px;height:${s * 2}px;
+      border-radius:50%;
+      background:${cfg.color}22;
+      animation:chestPulse 1.5s ease-out infinite;
+    "></div>
+    <div style="
+      position:absolute;top:50%;left:50%;
+      transform:translate(-50%,-50%);
+      width:${s * 1.4}px;height:${s * 1.4}px;
+      border-radius:50%;
+      border:1px solid ${cfg.color}66;
+      animation:chestPulse 1.5s ease-out infinite 0.5s;
+    "></div>` : '';
+  return L.divIcon({
+    className: '',
+    html: `
+      <div style="position:relative;width:${s}px;height:${s}px;">
+        ${pulseAnim}
+        <div style="
+          position:absolute;top:50%;left:50%;
+          transform:translate(-50%,-50%);
+          width:${s}px;height:${s}px;
+          border-radius:50%;
+          background:radial-gradient(circle at 35% 35%, ${cfg.color}ff, ${cfg.color}66);
+          border:2px solid ${cfg.color};
+          box-shadow:0 0 ${selected ? 24 : 12}px ${cfg.color}99,
+                     0 0 ${selected ? 48 : 24}px ${cfg.color}44;
+          display:flex;align-items:center;justify-content:center;
+        ">
+          <div style="
+            width:${s * 0.38}px;height:${s * 0.38}px;
+            border-radius:50%;
+            background:white;
+            opacity:0.85;
+            box-shadow:0 0 8px white;
+          "></div>
         </div>
       </div>
+      <style>
+        @keyframes chestPulse {
+          0%{transform:translate(-50%,-50%) scale(0.8);opacity:0.8}
+          100%{transform:translate(-50%,-50%) scale(1.8);opacity:0}
+        }
+      </style>`,
+    iconSize: [s, s], iconAnchor: [s / 2, s / 2],
+  });
+}
+
+function createPlayerIcon(): L.DivIcon {
+  return L.divIcon({
+    className: '',
+    html: `<div class="player-marker"><div class="player-marker__ring"></div><div class="player-marker__dot"></div></div>`,
+    iconSize: [40, 40], iconAnchor: [20, 20],
+  });
+}
+
+function calcDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const a = Math.sin(toRad(lat2 - lat1) / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(toRad(lng2 - lng1) / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatDistance(m: number): string {
+  return m < 1000 ? `${Math.round(m)}m` : `${(m / 1000).toFixed(1)}km`;
+}
+
+function randomGold(type: TreasureType): number {
+  const base: Record<TreasureType, number> = {
+    地域クーポン: 200, ゲームアイテム: 150, スポンサード: 500, 期間限定: 350, レジェンド: 1000,
+  };
+  return base[type] + Math.floor(Math.random() * 200);
+}
+
+// ── MapController ────────────────────────────────────────────
+function MapController({ center, active }: { center: [number, number] | null; northUp: boolean; heading: number; active: boolean }) {
+  const map = useMap();
+  useEffect(() => { map.setMinZoom(MIN_ZOOM); }, [map]);
+  useEffect(() => { if (center) map.setView(center, map.getZoom()); }, [center, map]);
+  useEffect(() => { if (active) setTimeout(() => map.invalidateSize(), 50); }, [active, map]);
+  return null;
+}
+
+// ── App ──────────────────────────────────────────────────────
+export default function App() {
+
+  // 画面表示
+  const [activeNav,    setActiveNav]    = useState<NavItem>('map');
+  const [showAR,       setShowAR]       = useState(false);
+  const [showAvatar,   setShowAvatar]   = useState(false);
+  const [showRanking,  setShowRanking]  = useState(false);
+  const [showItems,    setShowItems]    = useState(false);
+  // 上記はAR・Admin用に残す
+  const [showAdmin,    setShowAdmin]    = useState(false);
+  const [showSplash,   setShowSplash]   = useState(true);
+  const [showCharCreate, setShowCharCreate] = useState(false);
+  // Supabaseから宝箱データ取得
+const [treasures, setTreasures] = useState<TreasureChest[]>([]);
+
+useEffect(() => {
+  supabase
+    .from('chests')
+    .select('*')
+    .eq('is_active', true)
+    .then(({ data }) => {
+      if (data) {
+        const validTypes = Object.keys(TREASURE_CONFIG) as TreasureType[];
+        setTreasures(data.map(c => ({
+          id: c.id,
+          name: c.name,
+          type: validTypes.includes(c.type as TreasureType) ? c.type as TreasureType : '地域クーポン',
+          lat: c.lat,
+          lng: c.lng,
+          shop_name:   c.shop_name   ?? '',
+          shop_photo:  c.shop_photo  ?? '',
+          shop_url:    c.shop_url    ?? '',
+          shop_tel:    c.shop_tel    ?? '',
+          description: c.description ?? '',
+          gold_amount:   c.gold_amount   ?? 100,
+          unlock_mode:   c.unlock_mode   ?? 'gps',
+          appear_radius: c.appear_radius ?? 50,
+          qr_code:       c.qr_code       ?? '',
+        })));
+      }
+    });
+}, []);
+
+  // 宝箱
+  const [selectedChest,  setSelectedChest]  = useState<TreasureChest | null>(null);
+  const [rewardModal,    setRewardModal]    = useState<RewardResult | null>(null);
+  const [modalRevealed,  setModalRevealed]  = useState(false);
+
+  // ゴールド
+  const [totalGold,  setTotalGold]  = useState(0);
+  const [goldPulse,  setGoldPulse]  = useState(false);
+
+  // GPS
+  const [playerPos,   setPlayerPos]   = useState<[number, number] | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+
+  // 認証
+  const [user,         setUser]         = useState<any>(null);
+  const [profile,      setProfile]      = useState<any>(null);
+  const [authLoading,  setAuthLoading]  = useState(true);
+
+  // ── Effects ────────────────────────────────────────────────
+
+  // 認証監視
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // プロフィール取得
+  // プロフィール取得
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setProfile(data);
+          setTotalGold(data.gold ?? 0);
+          // 初回登録（username未設定）の場合キャラクター作成画面へ
+          if (!data.username) setShowCharCreate(true);
+        } else {
+          // プロフィール未作成の場合
+          setShowCharCreate(true);
+        }
+      });
+  }, [user]);
+
+  // GPS監視
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => setPlayerPos([pos.coords.latitude, pos.coords.longitude]),
+      () => {},
+      { enableHighAccuracy: true } as any,
+    );
+    return () => {
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+    };
+  }, []);
+
+  // ── 計算 ───────────────────────────────────────────────────
+  const mapCenter = playerPos ?? DEFAULT_CENTER;
+
+  const treasuresWithDist = useMemo(() =>
+    treasures.map((t) => ({
+      ...t,
+      distance:  formatDistance(calcDistanceMeters(mapCenter[0], mapCenter[1], t.lat, t.lng)),
+      distanceM: calcDistanceMeters(mapCenter[0], mapCenter[1], t.lat, t.lng),
+    })).sort((a, b) => a.distanceM - b.distanceM),
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ [mapCenter]);
+
+  // ── ハンドラ ───────────────────────────────────────────────
+
+  const handleNavClick = useCallback((key: NavItem) => {
+    setActiveNav(key);
+  }, []);
+
+  const handleOpenTreasure = useCallback((t: TreasureChest) => {
+    setModalRevealed(false);
+    const cfg  = TREASURE_CONFIG[t.type];
+    const gold = randomGold(t.type);
+    setRewardModal({
+      itemName:     cfg.items[Math.floor(Math.random() * cfg.items.length)],
+      gold,
+      treasureName: t.name,
+      type:         t.type,
+    });
+    setTimeout(() => setModalRevealed(true), 900);
+  }, []);
+
+  const handleClaimReward = useCallback(async () => {
+    if (!rewardModal || !user) return;
+  
+    const newGold = totalGold + rewardModal.gold;
+    setTotalGold(newGold);
+    setGoldPulse(true);
+    setTimeout(() => setGoldPulse(false), 600);
+  
+    // ゴールドをSupabaseに保存
+    await supabase.from('profiles').update({ gold: newGold }).eq('id', user.id);
+  
+    // 獲得アイテムをSupabaseに保存
+    const typeToCategory: Record<TreasureType, string> = {
+      地域クーポン:  'クーポン',
+      ゲームアイテム: '武器',
+      スポンサード:  'NFT',
+      期間限定:     'アクセサリー',
+      レジェンド:   'NFT',
+    };
+    const typeToEmoji: Record<TreasureType, string> = {
+      地域クーポン:  '🎟️',
+      ゲームアイテム: '⚔️',
+      スポンサード:  '⭐',
+      期間限定:     '💜',
+      レジェンド:   '👑',
+    };
+    await supabase.from('items').insert({
+      user_id:   user.id,
+      item_id: `${rewardModal.type}_${user.id}_${Date.now()}_${Math.random()}`,
+      name:      rewardModal.itemName,
+      category:  typeToCategory[rewardModal.type],
+      rarity:    rewardModal.type === 'レジェンド' ? '限定' : rewardModal.type === 'スポンサード' ? 'エピック' : 'レア',
+      emoji:     typeToEmoji[rewardModal.type],
+      source:    rewardModal.treasureName,
+      is_nft:    rewardModal.type === 'レジェンド' || rewardModal.type === 'スポンサード',
+    });
+  
+    // 取得ログをSupabaseに保存
+    await supabase.from('chest_logs').insert({
+      user_id:      user.id,
+      item_name:    rewardModal.itemName,
+      gold_earned:  rewardModal.gold,
+    });
+  
+    setRewardModal(null);
+    setModalRevealed(false);
+  }, [rewardModal, totalGold, user]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setProfile(null);
+    setTotalGold(0);
+  };
+
+  // ── ローディング / 未ログイン ───────────────────────────────
+  if (authLoading) return (
+    <div style={{ position:'fixed', inset:0, background:'#0a0e1a', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <p style={{ color:'#e8b84b', fontSize:18 }}>読み込み中...</p>
+    </div>
+  );
+
+  if (!user) return (
+    <Auth onLogin={() =>
+      supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null))
+    } />
+  );
+
+  // ── レンダー ───────────────────────────────────────────────
+  return (
+    <div className="app">
+
+      {/* フルスクリーン（ボトムナビの上） */}
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
+      {showCharCreate && user && (
+        <CharacterCreate
+          userId={user.id}
+          onComplete={() => {
+            setShowCharCreate(false);
+            supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+              .then(({ data }) => { if (data) { setProfile(data); setTotalGold(data.gold ?? 0); } });
+          }}
+        />
+      )}
+      {showAR && (
+        <ARCamera
+          onClose={() => setShowAR(false)}
+          chest={selectedChest ? {
+            id: selectedChest.id, name: selectedChest.name, type: selectedChest.type,
+            lat: selectedChest.lat, lng: selectedChest.lng,
+            gold_amount: selectedChest.gold_amount,
+            unlock_mode: (selectedChest as any).unlock_mode ?? 'gps',
+            appear_radius: (selectedChest as any).appear_radius ?? 50,
+            qr_code: (selectedChest as any).qr_code ?? '',
+          } : undefined}
+          playerPos={playerPos}
+          onClaim={(gold) => {
+            const newGold = totalGold + gold;
+            setTotalGold(newGold); setGoldPulse(true);
+            setTimeout(() => setGoldPulse(false), 600);
+            if (user) supabase.from('profiles').update({ gold: newGold }).eq('id', user.id);
+          }}
+        />
+      )}
+      {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
+
+      {/* ── ヘッダー ── */}
+      <header className="title-bar">
+        <div className="title-bar__left">
+          <h1 className="title-bar__heading">たからさがし</h1>
+          {profile && <span className="title-bar__username">⚔️ {profile.username}</span>}
+        </div>
+        <div className="title-bar__right">
+          <div className={`title-bar__gold${goldPulse ? ' title-bar__gold--pulse' : ''}`}>
+            <span aria-hidden="true">💰</span>
+            <span>{totalGold.toLocaleString()} G</span>
+          </div>
+          <button className="title-bar__logout" onClick={handleLogout}>ログアウト</button>
+          {profile?.is_admin && (
+            <button className="title-bar__logout" onClick={() => setShowAdmin(true)}>⚙️ 管理</button>
+          )}
+        </div>
+      </header>
+
+      {/* ── メインコンテンツ（ページ切替） ── */}
+      <main className="main-content">
+
+        {/* 地図 */}
+        <section className="map-area" aria-label="地図" style={{ display: activeNav === 'map' ? 'block' : 'none', position:'absolute', inset:0 }}>
+          <MapContainer center={mapCenter} zoom={DEFAULT_ZOOM} minZoom={MIN_ZOOM} maxZoom={19} scrollWheelZoom style={{ width:'100%', height:'100%' }}>
+            <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <MapController center={playerPos} northUp heading={0} active={activeNav === 'map'} />
+            {playerPos && <Marker position={playerPos} icon={createPlayerIcon()}><Popup>現在地</Popup></Marker>}
+            {treasures.map((t) => (
+              <Marker key={t.id} position={[t.lat, t.lng]} icon={createTreasureIcon(t.type)} eventHandlers={{ click: () => setSelectedChest(t) }} />
+            ))}
+          </MapContainer>
+        </section>
+
+        {/* マイページ */}
+        <section style={{ display: activeNav === 'avatar' ? 'flex' : 'none', position:'absolute', inset:0, flexDirection:'column', overflowY:'auto', background:'#0a0e1a' }}>
+          <Avatar onClose={() => setActiveNav('map')} />
+        </section>
+
+        {/* ランク */}
+        <section style={{ display: activeNav === 'rank' ? 'flex' : 'none', position:'absolute', inset:0, flexDirection:'column', overflowY:'auto', background:'#0a0e1a' }}>
+          <Ranking onClose={() => setActiveNav('map')} />
+        </section>
+
+        {/* アイテム */}
+        {activeNav === 'item' && user && (
+          <section style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', overflowY:'auto', background:'#0a0e1a' }}>
+            <Items userId={user.id} onClose={() => setActiveNav('map')} />
+          </section>
+        )}
+
+      </main>
+
+      {/* ── ボトムナビ（常に最前面） ── */}
+      <nav className="bottom-nav" aria-label="メインナビゲーション" style={{ position:'relative', zIndex:1000, flexShrink:0 }}>
+        {navItems.map((item) => {
+          const active = activeNav === item.key;
+          const color  = active ? '#e8b84b' : '#4a5268';
+          return (
+            <button key={item.key} type="button"
+              className={`bottom-nav__item${active ? ' bottom-nav__item--active' : ''}`}
+              onClick={() => handleNavClick(item.key)}
+              aria-current={active ? 'page' : undefined}
+            >
+              {item.key === 'map' && (
+                <svg width="28" height="28" viewBox="0 0 24 24" style={{ overflow:'visible' }}>
+                  <circle cx="12" cy="12" r="10" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="12" cy="12" r="8.5" fill="none" stroke={color} strokeWidth="0.5" strokeOpacity="0.4"/>
+                  <text x="12" y="5"  textAnchor="middle" fontSize="3.5" fill={color} fontFamily="Georgia">N</text>
+                  <text x="12" y="21" textAnchor="middle" fontSize="3.5" fill={color} fontFamily="Georgia">S</text>
+                  <text x="21" y="13" textAnchor="middle" fontSize="3.5" fill={color} fontFamily="Georgia">E</text>
+                  <text x="3"  y="13" textAnchor="middle" fontSize="3.5" fill={color} fontFamily="Georgia">W</text>
+                  <g style={{ transformOrigin:'12px 12px', animation: active ? 'compassSpin 3s linear infinite' : 'compassSpin 8s linear infinite' }}>
+                    <polygon points="12,5 10.5,12 12,11 13.5,12" fill={color}/>
+                    <polygon points="12,19 10.5,12 12,13 13.5,12" fill={active ? '#555' : '#2a2a3a'}/>
+                  </g>
+                  <circle cx="12" cy="12" r="1.2" fill={color}/>
+                </svg>
+              )}
+              {item.key === 'avatar' && (
+                <svg width="28" height="28" viewBox="0 0 24 24">
+                  <rect x="4" y="5" width="16" height="14" rx="1" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <ellipse cx="12" cy="5"  rx="8" ry="2" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <ellipse cx="12" cy="19" rx="8" ry="2" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <line x1="7" y1="9"  x2="17" y2="9"  stroke={color} strokeWidth="1" strokeLinecap="round" strokeOpacity="0.8"/>
+                  <line x1="7" y1="12" x2="15" y2="12" stroke={color} strokeWidth="1" strokeLinecap="round" strokeOpacity="0.8"/>
+                  <line x1="7" y1="15" x2="16" y2="15" stroke={color} strokeWidth="1" strokeLinecap="round" strokeOpacity="0.8"/>
+                  <circle cx="16" cy="9" r="2" fill="none" stroke={color} strokeWidth="1"/>
+                </svg>
+              )}
+              {item.key === 'rank' && (
+                <svg width="28" height="28" viewBox="0 0 24 24">
+                  <path d="M7,4 L17,4 L15,13 Q12,15 9,13 Z" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M7,6 Q3,6 3,10 Q3,13 7,13" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M17,6 Q21,6 21,10 Q21,13 17,13" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <line x1="12" y1="15" x2="12" y2="18" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <rect x="8" y="18" width="8" height="2" rx="1" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <text x="12" y="12" textAnchor="middle" fontSize="5" fill={color} fontFamily="Georgia">★</text>
+                </svg>
+              )}
+              {item.key === 'item' && (
+                <svg width="28" height="28" viewBox="0 0 24 24">
+                  <rect x="6" y="8" width="12" height="13" rx="3" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M9,8 Q9,4 12,4 Q15,4 15,8" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+                  <rect x="8" y="13" width="8" height="5" rx="1.5" fill="none" stroke={color} strokeWidth="1" strokeLinecap="round"/>
+                  <line x1="10" y1="15.5" x2="14" y2="15.5" stroke={color} strokeWidth="1" strokeLinecap="round" strokeDasharray="1,0.5"/>
+                  <path d="M10,8 Q12,6 14,8" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round"/>
+                </svg>
+              )}
+              <span className="bottom-nav__label">{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ── 宝箱詳細 ── */}
+      {selectedChest && (
+        <div className="chest-detail-overlay" onClick={() => setSelectedChest(null)}>
+          <div className="chest-detail-card" onClick={e => e.stopPropagation()}>
+            <button className="chest-detail-close" onClick={() => setSelectedChest(null)}>✕</button>
+            <div style={{ display:'flex', justifyContent:'center', margin:'8px 0 16px' }}>
+              <div style={{
+                width:64, height:64, borderRadius:'50%',
+                background:`radial-gradient(circle at 35% 35%, ${TREASURE_CONFIG[selectedChest.type].color}ff, ${TREASURE_CONFIG[selectedChest.type].color}66)`,
+                border:`2px solid ${TREASURE_CONFIG[selectedChest.type].color}`,
+                boxShadow:`0 0 24px ${TREASURE_CONFIG[selectedChest.type].color}99, 0 0 48px ${TREASURE_CONFIG[selectedChest.type].color}44`,
+                display:'flex', alignItems:'center', justifyContent:'center',
+              }}>
+                <div style={{ width:24, height:24, borderRadius:'50%', background:'white', opacity:0.85, boxShadow:'0 0 8px white' }} />
+              </div>
+            </div>
+            <h2 className="chest-detail-name">{selectedChest.name}</h2>
+            <div className="chest-detail-type" style={{ color: TREASURE_CONFIG[selectedChest.type].color }}>
+              {TREASURE_CONFIG[selectedChest.type].label}
+            </div>
+            <div className="chest-detail-dist">
+              📍 現在地から {treasuresWithDist.find(t => t.id === selectedChest.id)?.distance ?? '---'}
+            </div>
+            {selectedChest.shop_photo && (
+              <div style={{ margin:'12px 0', borderRadius:12, overflow:'hidden', height:140 }}>
+                <img src={selectedChest.shop_photo} alt={selectedChest.shop_name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+              </div>
+            )}
+            {(selectedChest.shop_name || selectedChest.shop_tel || selectedChest.shop_url) && (
+              <div style={{ background:'rgba(255,255,255,0.05)', borderRadius:12, padding:'12px 14px', margin:'10px 0', display:'flex', flexDirection:'column', gap:8 }}>
+                {selectedChest.shop_name && <div style={{ fontSize:14, fontWeight:700 }}>🏪 {selectedChest.shop_name}</div>}
+                {selectedChest.description && <div style={{ fontSize:12, opacity:0.7, lineHeight:1.6 }}>{selectedChest.description}</div>}
+                {selectedChest.shop_tel && <a href={`tel:${selectedChest.shop_tel}`} style={{ fontSize:13, color:'#4CAF50', textDecoration:'none' }}>📞 {selectedChest.shop_tel}</a>}
+                {selectedChest.shop_url && <a href={selectedChest.shop_url} target="_blank" rel="noreferrer" style={{ fontSize:13, color:'#3b82f6', textDecoration:'none' }}>🔗 公式サイトを見る</a>}
+              </div>
+            )}
+            <div style={{ fontSize:13, opacity:0.6, margin:'4px 0 12px', textAlign:'center' }}>
+              💰 獲得ゴール：{selectedChest.gold_amount ?? 100}G
+            </div>
+            <div className="chest-detail-btns">
+              <button className="chest-detail-route-btn" onClick={() => {
+                const url = playerPos
+                  ? `https://www.google.com/maps/dir/${playerPos[0]},${playerPos[1]}/${selectedChest.lat},${selectedChest.lng}`
+                  : `https://www.google.com/maps/dir//${selectedChest.lat},${selectedChest.lng}`;
+                window.open(url, '_blank');
+              }}>🗺️ 経路案内</button>
+              <button className="chest-detail-ar-btn" onClick={() => { setShowAR(true); }}>📷 ARで開ける</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 報酬モーダル ── */}
+      {rewardModal && (
+        <div className="reward-overlay" role="presentation">
+          <div className="reward-modal" role="dialog" aria-modal="true" aria-labelledby="reward-modal-title">
+            <p className="reward-modal__source">{rewardModal.treasureName}</p>
+            <div className="reward-modal__type-badge" style={{ color: TREASURE_CONFIG[rewardModal.type].color }}>
+              {TREASURE_CONFIG[rewardModal.type].emoji} {TREASURE_CONFIG[rewardModal.type].label}
+            </div>
+            <div className="chest-scene">
+              <div className="chest chest--opening">
+                <div className="chest__shadow" />
+                <div className="chest__body"><div className="chest__lock" /></div>
+                <div className="chest__lid"><div className="chest__lid-top" /><div className="chest__lid-front" /></div>
+                <div className="chest__sparkles" aria-hidden="true"><span>✨</span><span>⭐</span><span>✨</span></div>
+              </div>
+            </div>
+            <div className={`reward-modal__rewards${modalRevealed ? ' reward-modal__rewards--visible' : ''}`}>
+              <h2 id="reward-modal-title" className="reward-modal__title">宝箱を開けた！</h2>
+              <p className="reward-modal__item">{rewardModal.itemName}</p>
+              <p className="reward-modal__gold">+{rewardModal.gold.toLocaleString()} G</p>
+              <button type="button" className="reward-modal__claim-btn" onClick={handleClaimReward}>受け取る！</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
-        @keyframes floatP { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-        @keyframes glowP  { 0%,100%{transform:scale(1);opacity:0.6} 50%{transform:scale(1.1);opacity:1} }
+        @keyframes compassSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes trophyShine { 0%,100%{opacity:0.3} 50%{opacity:1} }
+        @keyframes packBounce  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
       `}</style>
+
     </div>
   );
 }
