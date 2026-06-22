@@ -159,24 +159,29 @@ export default function CharacterCreate({ userId, onComplete }: { userId: string
           {/* Step 2: カラー */}
           {step === 2 && (
             <div>
-              <div style={{ fontSize: 10, letterSpacing: 3, color: 'rgba(232,184,75,0.5)', marginBottom: 12, fontFamily: 'sans-serif' }}>肌の色 ────────────────</div>
-              <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-                {SKIN_COLORS.map(c => (
-                  <div key={c.hex} onClick={() => setSkinColor(c.hex)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: `#${c.hex}`, border: `3px solid ${skinColor === c.hex ? '#e8b84b' : 'rgba(255,255,255,0.1)'}`, boxShadow: skinColor === c.hex ? '0 0 12px rgba(232,184,75,0.5)' : 'none', transition: 'all 0.2s', transform: skinColor === c.hex ? 'scale(1.12)' : 'scale(1)' }}/>
-                    <span style={{ fontSize: 10, color: 'rgba(232,184,75,0.6)', fontFamily: 'sans-serif' }}>{c.label}</span>
-                  </div>
-                ))}
+              <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12, fontFamily:'sans-serif' }}>見た目を選ぼう ──────────</div>
+              <p style={{ fontSize:12, color:'rgba(232,184,75,0.6)', fontFamily:'sans-serif', marginBottom:16, lineHeight:1.6 }}>
+                上の「🎲 ランダム」ボタンを押して気に入った見た目を選んでください！
+              </p>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
+                {[1,2,3,4,5,6].map(i => {
+                  const s = Math.abs(parseInt(seed, 36) * i % 999999).toString(36);
+                  return (
+                    <button key={i} onClick={() => setSeed(s)} style={{
+                      padding:'8px 4px', textAlign:'center',
+                      background: seed === s ? 'rgba(232,184,75,0.15)' : 'rgba(255,255,255,0.04)',
+                      border:`1px solid ${seed===s?'#e8b84b':'rgba(232,184,75,0.15)'}`,
+                      borderRadius:6, cursor:'pointer', transition:'all 0.2s',
+                    }}>
+                      <img src={`https://api.dicebear.com/7.x/${style}/svg?seed=${s}&size=60`} alt="" style={{ width:56, height:56, display:'block', margin:'0 auto 4px' }}/>
+                      <span style={{ fontSize:10, color:'rgba(232,184,75,0.6)', fontFamily:'sans-serif' }}>パターン{i}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <div style={{ fontSize: 10, letterSpacing: 3, color: 'rgba(232,184,75,0.5)', marginBottom: 12, fontFamily: 'sans-serif' }}>髪の色 ────────────────</div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                {HAIR_COLORS.map(c => (
-                  <div key={c.hex} onClick={() => setHairColor(c.hex)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: `#${c.hex}`, border: `3px solid ${hairColor === c.hex ? '#e8b84b' : 'rgba(255,255,255,0.1)'}`, boxShadow: hairColor === c.hex ? '0 0 12px rgba(232,184,75,0.5)' : 'none', transition: 'all 0.2s', transform: hairColor === c.hex ? 'scale(1.12)' : 'scale(1)' }}/>
-                    <span style={{ fontSize: 10, color: 'rgba(232,184,75,0.6)', fontFamily: 'sans-serif' }}>{c.label}</span>
-                  </div>
-                ))}
-              </div>
+              <button onClick={() => setSeed(Math.random().toString(36).slice(2,8))} style={{ width:'100%', marginTop:16, padding:'12px', background:'rgba(232,184,75,0.1)', border:'1px solid rgba(232,184,75,0.3)', borderRadius:6, color:'#e8b84b', cursor:'pointer', fontSize:13, fontFamily:'sans-serif', letterSpacing:1 }}>
+                🎲 もっとランダムに！
+              </button>
             </div>
           )}
 
