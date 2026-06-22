@@ -524,7 +524,7 @@ useEffect(() => {
               </button>
               <button
                 className="chest-detail-ar-btn"
-                onClick={() => { setSelectedChest(null); handleOpenTreasure(selectedChest); }}
+                onClick={() => { setShowAR(true); setActiveNav('ar'); }}
               >
                 📷 ARで開ける
               </button>
