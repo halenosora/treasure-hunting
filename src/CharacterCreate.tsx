@@ -33,8 +33,8 @@ const HAIR_COLORS = [
 ];
 
 function getAvatarUrl(seed: string, style: string, skinColor: string, hairColor: string) {
-  return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=transparent&skinColor=${skinColor}&hairColor=${hairColor}&size=200`;
-}
+    return `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&backgroundColor=transparent&skin=${skinColor}&skinColor=${skinColor}&hairColor=${hairColor}&hair=${hairColor}&size=200`;
+  }
 
 export default function CharacterCreate({ userId, onComplete }: { userId: string; onComplete: () => void }) {
   const [step, setStep] = useState(0);
