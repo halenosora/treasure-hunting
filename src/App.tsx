@@ -392,10 +392,18 @@ useEffect(() => {
             const newGold = totalGold + gold;
             setTotalGold(newGold); setGoldPulse(true);
             setTimeout(() => setGoldPulse(false), 600);
-            if (user) supabase.from('profiles').update({ gold: newGold }).eq('id', user.id);
+            if (user) {
+              supabase.from('profiles').update({ gold: newGold }).eq('id', user.id);
+              if (selectedChest) {
+                supabase.from('chest_logs').insert({
+                  user_id: user.id,
+                  item_name: selectedChest.name,
+                  gold_earned: gold,
+                  chest_id: selectedChest.id,
+                });
+              }
+            }
           }}
-        />
-      )}
       {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
 
       {/* ── ヘッダー ── */}
