@@ -8,6 +8,7 @@ import Ranking from './Ranking';
 import Auth from './Auth';
 import Items from './ItemsScreen';
 import AdminPage from './AdminPage';
+import SplashScreen from './SplashScreen';
 import './App.css';
 
 // ── 型定義 ──────────────────────────────────────────────────
@@ -162,6 +163,7 @@ export default function App() {
   const [showRanking,  setShowRanking]  = useState(false);
   const [showItems,    setShowItems]    = useState(false);
   const [showAdmin,    setShowAdmin]    = useState(false);
+  const [showSplash,   setShowSplash]   = useState(true);
   // Supabaseから宝箱データ取得
 const [treasures, setTreasures] = useState<TreasureChest[]>([]);
 
@@ -353,6 +355,7 @@ useEffect(() => {
   // ── レンダー ───────────────────────────────────────────────
   return (
     <div className="app">
+    {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
 
       {/* ── モーダル類 ── */}
       {showAR && (
