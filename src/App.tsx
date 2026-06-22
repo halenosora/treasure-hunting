@@ -425,88 +425,59 @@ useEffect(() => {
 
       {/* ── 宝箱詳細 ── */}
       {selectedChest && (
-  <div className="chest-detail-overlay" onClick={() => setSelectedChest(null)}>
-    <div className="chest-detail-card" onClick={e => e.stopPropagation()}>
-      <button className="chest-detail-close" onClick={() => setSelectedChest(null)}>✕</button>
+        <div className="chest-detail-overlay" onClick={() => setSelectedChest(null)}>
+          <div className="chest-detail-card" onClick={e => e.stopPropagation()}>
+            <button className="chest-detail-close" onClick={() => setSelectedChest(null)}>✕</button>
 
-      {/* 光るアイコン */}
-      <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 16px' }}>
-        <div style={{
-          width: 64, height: 64, borderRadius: '50%',
-          background: `radial-gradient(circle at 35% 35%, ${TREASURE_CONFIG[selectedChest.type].color}ff, ${TREASURE_CONFIG[selectedChest.type].color}66)`,
-          border: `2px solid ${TREASURE_CONFIG[selectedChest.type].color}`,
-          boxShadow: `0 0 24px ${TREASURE_CONFIG[selectedChest.type].color}99, 0 0 48px ${TREASURE_CONFIG[selectedChest.type].color}44`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'white', opacity: 0.85, boxShadow: '0 0 8px white' }} />
-        </div>
-      </div>
-
-      <h2 className="chest-detail-name">{selectedChest.name}</h2>
-      <div className="chest-detail-type" style={{ color: TREASURE_CONFIG[selectedChest.type].color }}>
-        {TREASURE_CONFIG[selectedChest.type].label}
-      </div>
-      <div className="chest-detail-dist">
-        📍 現在地から {treasuresWithDist.find(t => t.id === selectedChest.id)?.distance ?? '---'}
-      </div>
-
-      {/* 店舗写真 */}
-      {selectedChest.shop_photo && (
-        <div style={{ margin: '12px 0', borderRadius: 12, overflow: 'hidden', height: 140 }}>
-          <img src={selectedChest.shop_photo} alt={selectedChest.shop_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        </div>
-      )}
-
-      {/* 店舗情報 */}
-      {(selectedChest.shop_name || selectedChest.shop_tel || selectedChest.shop_url) && (
-        <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: '12px 14px', margin: '10px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {selectedChest.shop_name && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700 }}>
-              🏪 {selectedChest.shop_name}
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0 16px' }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: `radial-gradient(circle at 35% 35%, ${TREASURE_CONFIG[selectedChest.type].color}ff, ${TREASURE_CONFIG[selectedChest.type].color}66)`,
+                border: `2px solid ${TREASURE_CONFIG[selectedChest.type].color}`,
+                boxShadow: `0 0 24px ${TREASURE_CONFIG[selectedChest.type].color}99, 0 0 48px ${TREASURE_CONFIG[selectedChest.type].color}44`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'white', opacity: 0.85, boxShadow: '0 0 8px white' }} />
+              </div>
             </div>
-          )}
-          {selectedChest.description && (
-            <div style={{ fontSize: 12, opacity: 0.7, lineHeight: 1.6 }}>{selectedChest.description}</div>
-          )}
-          {selectedChest.shop_tel && (
-            <a href={`tel:${selectedChest.shop_tel}`} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#4CAF50', textDecoration: 'none' }}>
-              📞 {selectedChest.shop_tel}
-            </a>
-          )}
-          {selectedChest.shop_url && (
-            <a href={selectedChest.shop_url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#3b82f6', textDecoration: 'none' }}>
-              🔗 公式サイトを見る
-            </a>
-          )}
-        </div>
-      )}
 
-      <div style={{ fontSize: 13, opacity: 0.6, margin: '4px 0 12px', textAlign: 'center' }}>
-        💰 獲得ゴール：{selectedChest.gold_amount ?? 100}G
-      </div>
+            <h2 className="chest-detail-name">{selectedChest.name}</h2>
+            <div className="chest-detail-type" style={{ color: TREASURE_CONFIG[selectedChest.type].color }}>
+              {TREASURE_CONFIG[selectedChest.type].label}
+            </div>
+            <div className="chest-detail-dist">
+              📍 現在地から {treasuresWithDist.find(t => t.id === selectedChest.id)?.distance ?? '---'}
+            </div>
 
-      <div className="chest-detail-btns">
-        <button
-          className="chest-detail-route-btn"
-          onClick={() => {
-            const url = playerPos
-              ? `https://www.google.com/maps/dir/${playerPos[0]},${playerPos[1]}/${selectedChest.lat},${selectedChest.lng}`
-              : `https://www.google.com/maps/dir//${selectedChest.lat},${selectedChest.lng}`;
-            window.open(url, '_blank');
-          }}
-        >
-          🗺️ 経路案内
-        </button>
-        <button
-          className="chest-detail-ar-btn"
-          onClick={() => { setSelectedChest(null); handleOpenTreasure(selectedChest); }}
-        >
-          📷 ARで開ける
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            {selectedChest.shop_photo && (
+              <div style={{ margin: '12px 0', borderRadius: 12, overflow: 'hidden', height: 140 }}>
+                <img src={selectedChest.shop_photo} alt={selectedChest.shop_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            )}
+
+            {(selectedChest.shop_name || selectedChest.shop_tel || selectedChest.shop_url) && (
+              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: '12px 14px', margin: '10px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {selectedChest.shop_name && (
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>🏪 {selectedChest.shop_name}</div>
+                )}
+                {selectedChest.description && (
+                  <div style={{ fontSize: 12, opacity: 0.7, lineHeight: 1.6 }}>{selectedChest.description}</div>
+                )}
+                {selectedChest.shop_tel && (
+                  <a href={`tel:${selectedChest.shop_tel}`} style={{ fontSize: 13, color: '#4CAF50', textDecoration: 'none' }}>
+                    📞 {selectedChest.shop_tel}
+                  </a>
+                )}
+                {selectedChest.shop_url && (
+                  <a href={selectedChest.shop_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#3b82f6', textDecoration: 'none' }}>
+                    🔗 公式サイトを見る
+                  </a>
+                )}
+              </div>
+            )}
+
+            <div style={{ fontSize: 13, opacity: 0.6, margin: '4px 0 12px', textAlign: 'center' }}>
+              💰 獲得ゴール：{selectedChest.gold_amount ?? 100}G
             </div>
 
             <div className="chest-detail-btns">
