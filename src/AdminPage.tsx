@@ -4,7 +4,7 @@ import L from 'leaflet';
 import { supabase } from './supabase';
 import 'leaflet/dist/leaflet.css';
 
-type ChestType = '無料クーポン' | 'ゲームアイテム' | 'スポンサー' | '限定グッズ' | 'レジェンド';
+type ChestType = '地域クーポン' | 'ゲームアイテム' | 'スポンサード' | '期間限定' | 'レジェンド';
 
 interface Chest {
   id?: string;
@@ -17,12 +17,12 @@ interface Chest {
 }
 
 const TYPE_CONFIG: Record<ChestType, { color: string; emoji: string }> = {
-  '無料クーポン':  { color: '#22c55e', emoji: '🎫' },
-  'ゲームアイテム': { color: '#3b82f6', emoji: '🎮' },
-  'スポンサー':    { color: '#e8b84b', emoji: '⭐' },
-  '限定グッズ':    { color: '#a855f7', emoji: '💎' },
-  'レジェンド':    { color: '#ef4444', emoji: '👑' },
-};
+    '地域クーポン':  { color: '#22c55e', emoji: '🟢' },
+    'ゲームアイテム': { color: '#3b82f6', emoji: '🔵' },
+    'スポンサード':  { color: '#e8b84b', emoji: '⭐' },
+    '期間限定':     { color: '#a855f7', emoji: '💜' },
+    'レジェンド':   { color: '#ef4444', emoji: '👑' },
+  };
 
 function ClickHandler({ onClick }: { onClick: (lat: number, lng: number) => void }) {
   useMapEvents({ click: (e) => onClick(e.latlng.lat, e.latlng.lng) });
@@ -62,7 +62,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
     if (editing && selected) {
       setSelected({ ...selected, lat, lng });
     } else {
-      setSelected({ name: '', type: '無料クーポン', lat, lng, gold_amount: 100, is_active: true });
+        setSelected({ name: '', type: '地域クーポン', lat, lng, gold_amount: 100, is_active: true });
       setEditing(true);
     }
   }
