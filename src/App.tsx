@@ -149,8 +149,14 @@ function randomGold(type: TreasureType): number {
 // ── MapController ────────────────────────────────────────────
 function MapController({ center, active }: { center: [number, number] | null; northUp: boolean; heading: number; active: boolean }) {
   const map = useMap();
+  const initializedRef = React.useRef(false);
   useEffect(() => { map.setMinZoom(MIN_ZOOM); }, [map]);
-  useEffect(() => { if (center) map.setView(center, map.getZoom()); }, [center, map]);
+  useEffect(() => {
+    if (center && !initializedRef.current) {
+      map.setView(center, map.getZoom());
+      initializedRef.current = true;
+    }
+  }, [center, map]);
   useEffect(() => { if (active) setTimeout(() => map.invalidateSize(), 50); }, [active, map]);
   return null;
 }
