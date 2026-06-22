@@ -7,6 +7,7 @@ import Avatar from './Avatar';
 import Ranking from './Ranking';
 import Auth from './Auth';
 import Items from './ItemsScreen';
+import AdminPage from './AdminPage';
 import './App.css';
 
 // ── 型定義 ──────────────────────────────────────────────────
@@ -14,7 +15,7 @@ type NavItem = 'map' | 'ar' | 'avatar' | 'rank' | 'item';
 type TreasureType = '地域クーポン' | 'ゲームアイテム' | 'スポンサード' | '期間限定' | 'レジェンド';
 
 interface TreasureChest {
-  id: number;
+  id: string | number;
   name: string;
   type: TreasureType;
   lat: number;
@@ -42,14 +43,6 @@ const TREASURE_CONFIG: Record<TreasureType, {
   期間限定:     { color: '#a855f7', emoji: '💜', shape: 'diamond', label: '期間限定',     items: ['ハロウィン魔女帽', '正月金の鏡餅', 'クリスマスベル', '夏祭り花火'] },
   レジェンド:   { color: '#ef4444', emoji: '👑', shape: 'crown',   label: 'レジェンド',   items: ['伝説の剣NFT', '黄金の鎧NFT', 'ドラゴンの翼NFT', '神々の指輪NFT'] },
 };
-
-const treasures: TreasureChest[] = [
-  { id: 1, name: '地域クーポン宝箱', type: '地域クーポン',  lat: 35.5285, lng: 139.5760 },
-  { id: 2, name: 'アイテム宝箱',     type: 'ゲームアイテム', lat: 35.5270, lng: 139.5780 },
-  { id: 3, name: 'NIKEコラボ宝箱',  type: 'スポンサード',  lat: 35.5295, lng: 139.5740 },
-  { id: 4, name: 'ハロウィン宝箱',   type: '期間限定',     lat: 35.5265, lng: 139.5755 },
-  { id: 5, name: '伝説の宝庫',      type: 'レジェンド',   lat: 35.5290, lng: 139.5765 },
-];
 
 const navItems: { key: NavItem; label: string; icon: string }[] = [
   { key: 'map',    label: 'マップ',     icon: '🗺️' },
@@ -120,6 +113,27 @@ export default function App() {
   const [showAvatar,   setShowAvatar]   = useState(false);
   const [showRanking,  setShowRanking]  = useState(false);
   const [showItems,    setShowItems]    = useState(false);
+  const [showAdmin,    setShowAdmin]    = useState(false);
+  // Supabaseから宝箱データ取得
+const [treasures, setTreasures] = useState<TreasureChest[]>([]);
+
+useEffect(() => {
+  supabase
+    .from('chests')
+    .select('*')
+    .eq('is_active', true)
+    .then(({ data }) => {
+      if (data) {
+        setTreasures(data.map(c => ({
+          id: c.id,
+          name: c.name,
+          type: c.type as TreasureType,
+          lat: c.lat,
+          lng: c.lng,
+        })));
+      }
+    });
+}, []);
 
   // 宝箱
   const [selectedChest,  setSelectedChest]  = useState<TreasureChest | null>(null);
@@ -286,6 +300,7 @@ export default function App() {
       {showAvatar  && <Avatar   onClose={() => setShowAvatar(false)} />}
       {showRanking && <Ranking  onClose={() => setShowRanking(false)} />}
       {showItems   && user && <Items userId={user.id} onClose={() => setShowItems(false)} />}
+      {showAdmin   && <AdminPage onClose={() => setShowAdmin(false)} />}
 
       {/* ── ヘッダー ── */}
       <header className="title-bar">
@@ -299,6 +314,9 @@ export default function App() {
             <span>{totalGold.toLocaleString()} G</span>
           </div>
           <button className="title-bar__logout" onClick={handleLogout}>ログアウト</button>
+          {profile?.is_admin && (
+  <button className="title-bar__logout" onClick={() => setShowAdmin(true)}>⚙️ 管理</button>
+)}
         </div>
       </header>
 
