@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import './Avatar.css';
 import { Item, ItemCategory, RARITY_COLORS, DEFAULT_ITEMS, LOCAL_ITEMS, COLLAB_ITEMS } from './items';
 
-const CATEGORIES: ItemCategory[] = ['帽子', '服', 'シューズ', 'アクセサリー', '武器'];
+const CATEGORIES: ItemCategory[] = ['帽子', '上着', 'パンツ', '靴下', '靴', 'アクセサリー', 'ペット', '乗り物'];
 
 // デモ用：最初から全アイテムを所持
 const ALL_ITEMS = [...DEFAULT_ITEMS, ...LOCAL_ITEMS, ...COLLAB_ITEMS];
@@ -15,7 +15,7 @@ const Avatar: React.FC<AvatarProps> = ({ onClose }) => {
   const [activeCategory, setActiveCategory] = useState<ItemCategory>('帽子');
   const [equipped, setEquipped] = useState<Partial<Record<ItemCategory, Item>>>({
     帽子: DEFAULT_ITEMS[0],
-    武器: DEFAULT_ITEMS[1],
+    上着: DEFAULT_ITEMS[1],
   });
   const [saved, setSaved] = useState(false);
 
@@ -47,12 +47,12 @@ const Avatar: React.FC<AvatarProps> = ({ onClose }) => {
             <div className="av-preview-hat">{equipped['帽子']?.emoji ?? '　'}</div>
             <div className="av-preview-face">🧝</div>
             <div className="av-preview-bottom">
-              <span>{equipped['服']?.emoji ?? '　'}</span>
-              <span>{equipped['シューズ']?.emoji ?? '　'}</span>
+              <span>{equipped['上着']?.emoji ?? '　'}</span>
+              <span>{equipped['靴']?.emoji ?? '　'}</span>
             </div>
             <div className="av-preview-acc">
               <span>{equipped['アクセサリー']?.emoji ?? '　'}</span>
-              <span>{equipped['武器']?.emoji ?? '　'}</span>
+              <span>{equipped['ペット']?.emoji ?? '　'}</span>
             </div>
           </div>
           <div className="av-preview-name">冒険者 Lv.12</div>

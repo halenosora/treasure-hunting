@@ -404,7 +404,9 @@ useEffect(() => {
               }
             }
           }}
-      {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
+          />
+        )}
+        {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
 
       {/* ── ヘッダー ── */}
       <header className="title-bar">
