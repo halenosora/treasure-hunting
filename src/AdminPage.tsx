@@ -7,19 +7,22 @@ import 'leaflet/dist/leaflet.css';
 type ChestType = '地域クーポン' | 'ゲームアイテム' | 'スポンサード' | '期間限定' | 'レジェンド';
 
 interface Chest {
-  id?: string;
-  name: string;
-  type: ChestType;
-  lat: number;
-  lng: number;
-  gold_amount: number;
-  is_active: boolean;
-  shop_name: string;
-  shop_photo: string;
-  shop_url: string;
-  shop_tel: string;
-  description: string;
-}
+    id?: string;
+    name: string;
+    type: ChestType;
+    lat: number;
+    lng: number;
+    gold_amount: number;
+    is_active: boolean;
+    shop_name: string;
+    shop_photo: string;
+    shop_url: string;
+    shop_tel: string;
+    description: string;
+    unlock_mode: 'gps' | 'qr';
+    appear_radius: number;
+    qr_code: string;
+  }
 
 const TYPE_CONFIG: Record<ChestType, { color: string; emoji: string }> = {
   '地域クーポン':  { color: '#22c55e', emoji: '🟢' },
@@ -47,7 +50,7 @@ function makeIcon(type: string, selected = false) {
   });
 }
 
-const EMPTY: Chest = { name:'', type:'地域クーポン', lat:0, lng:0, gold_amount:100, is_active:true, shop_name:'', shop_photo:'', shop_url:'', shop_tel:'', description:'' };
+const EMPTY: Chest = { name:'', type:'地域クーポン', lat:0, lng:0, gold_amount:100, is_active:true, shop_name:'', shop_photo:'', shop_url:'', shop_tel:'', description:'', unlock_mode:'gps', appear_radius:50, qr_code:'' };
 
 export default function AdminPage({ onClose }: { onClose: () => void }) {
   const [chests, setChests] = useState<Chest[]>([]);
@@ -74,7 +77,10 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
   async function handleSave() {
     if (!selected?.name.trim()) { showToast('❌ 名前を入力してください'); return; }
     setSaving(true);
-    const payload = { name:selected.name, type:selected.type, lat:selected.lat, lng:selected.lng, gold_amount:selected.gold_amount, is_active:selected.is_active, shop_name:selected.shop_name, shop_photo:selected.shop_photo, shop_url:selected.shop_url, shop_tel:selected.shop_tel, description:selected.description };
+    const qrValue = selected.unlock_mode === 'qr' && !selected.qr_code
+  ? `TREASURE_${selected.id ?? Date.now()}`
+  : selected.qr_code;
+const payload = { name:selected.name, type:selected.type, lat:selected.lat, lng:selected.lng, gold_amount:selected.gold_amount, is_active:selected.is_active, shop_name:selected.shop_name, shop_photo:selected.shop_photo, shop_url:selected.shop_url, shop_tel:selected.shop_tel, description:selected.description, unlock_mode:selected.unlock_mode, appear_radius:selected.appear_radius, qr_code:qrValue };
     const { error } = selected.id
       ? await supabase.from('chests').update(payload).eq('id', selected.id)
       : await supabase.from('chests').insert(payload);
@@ -184,6 +190,40 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                 <label style={lbl}>店舗写真URL<input value={selected.shop_photo} onChange={e => setSelected({...selected, shop_photo:e.target.value})} placeholder="https://..." style={inp} /></label>
                 <label style={lbl}>公式サイトURL<input value={selected.shop_url} onChange={e => setSelected({...selected, shop_url:e.target.value})} placeholder="https://..." style={inp} /></label>
                 <label style={lbl}>電話番号<input value={selected.shop_tel} onChange={e => setSelected({...selected, shop_tel:e.target.value})} placeholder="045-000-0000" style={inp} /></label>
+                <div style={{ borderTop:'1px solid rgba(255,255,255,0.1)', paddingTop:10, fontSize:12, color:'#ffd700' }}>🔓 開封設定</div>
+
+                <label style={lbl}>開封モード
+                  <div style={{ display:'flex', gap:8, marginTop:4 }}>
+                    <button onClick={() => setSelected({...selected, unlock_mode:'gps'})}
+                      style={{ flex:1, padding:'8px', border:`2px solid ${selected.unlock_mode==='gps'?'#22c55e':'rgba(255,255,255,0.1)'}`, background:selected.unlock_mode==='gps'?'rgba(34,197,94,0.2)':'transparent', color:'#e8d5a3', borderRadius:8, cursor:'pointer', fontSize:12 }}>
+                      📡 GPSモード
+                    </button>
+                    <button onClick={() => setSelected({...selected, unlock_mode:'qr'})}
+                      style={{ flex:1, padding:'8px', border:`2px solid ${selected.unlock_mode==='qr'?'#3b82f6':'rgba(255,255,255,0.1)'}`, background:selected.unlock_mode==='qr'?'rgba(59,130,246,0.2)':'transparent', color:'#e8d5a3', borderRadius:8, cursor:'pointer', fontSize:12 }}>
+                      📷 QRモード
+                    </button>
+                  </div>
+                </label>
+
+                {selected.unlock_mode === 'gps' && (
+                  <label style={lbl}>出現半径（メートル）
+                    <input type="number" value={selected.appear_radius} onChange={e => setSelected({...selected, appear_radius:Number(e.target.value)})} style={inp} />
+                  </label>
+                )}
+
+                {selected.unlock_mode === 'qr' && selected.qr_code && (
+                  <div style={{ background:'rgba(255,255,255,0.05)', borderRadius:8, padding:12, textAlign:'center' }}>
+                    <p style={{ fontSize:11, opacity:0.6, marginBottom:8 }}>QRコード（店舗に設置）</p>
+                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${selected.qr_code}`} alt="QR" style={{ borderRadius:8 }} />
+                    <p style={{ fontSize:10, opacity:0.4, marginTop:4 }}>{selected.qr_code}</p>
+                  </div>
+                )}
+
+                {selected.unlock_mode === 'qr' && !selected.qr_code && (
+                  <div style={{ background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.3)', borderRadius:8, padding:12, fontSize:12, opacity:0.8, textAlign:'center' }}>
+                    💡 保存するとQRコードが自動生成されます
+                  </div>
+                )}
                 <label style={lbl}>説明文<textarea value={selected.description} onChange={e => setSelected({...selected, description:e.target.value})} placeholder="宝箱の説明やヒントなど" rows={3} style={{...inp, resize:'vertical'}} /></label>
                 <label style={lbl}>ゴール量<input type="number" value={selected.gold_amount} onChange={e => setSelected({...selected, gold_amount:Number(e.target.value)})} style={inp} /></label>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
