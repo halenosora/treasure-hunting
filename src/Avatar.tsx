@@ -181,7 +181,7 @@ export default function Avatar({ onClose }: AvatarProps) {
                 </button>
               ))}
             </div>
-            {filteredItems.length === 0 ? (
+            {sortedWearableItems.length === 0 ? (
               <div style={{ textAlign:'center', padding:'40px 20px', opacity:0.4 }}>
                 <div style={{ fontSize:40, marginBottom:12 }}>🔒</div>
                 <p style={{ fontSize:13 }}>このカテゴリーのアイテムがありません</p>
