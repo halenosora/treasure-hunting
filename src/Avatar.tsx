@@ -6,36 +6,31 @@ import './Avatar.css';
 interface AvatarProps { onClose: () => void; }
 
 const MENU_ITEMS = [
-  { id: 'avatar',    icon: '👤', label: '着せ替え' },
-  { id: 'notice',   icon: '📢', label: 'お知らせ' },
-  { id: 'mission',  icon: '🎯', label: 'ミッション' },
-  { id: 'friend',   icon: '👥', label: 'フレンド' },
-  { id: 'setting',  icon: '⚙️', label: '設定' },
+  { id: 'avatar',  icon: '👤', label: '着せ替え' },
+  { id: 'notice',  icon: '📢', label: 'お知らせ' },
+  { id: 'mission', icon: '🎯', label: 'ミッション' },
+  { id: 'friend',  icon: '👥', label: 'フレンド' },
+  { id: 'setting', icon: '⚙️', label: '設定' },
 ];
 
 const MISSIONS = [
-  { id:1, title:'初めての宝箱',     desc:'宝箱を1個開封する',     reward:100,  progress:1, total:1,  done:true },
-  { id:2, title:'宝探し初級',      desc:'宝箱を5個開封する',     reward:300,  progress:3, total:5,  done:false },
-  { id:3, title:'地域の探索者',     desc:'異なるエリアで宝箱を開く', reward:500,  progress:1, total:3,  done:false },
-  { id:4, title:'コレクター',       desc:'アイテムを10個集める',   reward:1000, progress:3, total:10, done:false },
-  { id:5, title:'ランキング入り',    desc:'ランキングトップ10に入る', reward:2000, progress:0, total:1,  done:false },
+  { id:1, title:'初めての宝箱',  desc:'宝箱を1個開封する',      reward:100,  progress:1, total:1,  done:true },
+  { id:2, title:'宝探し初級',   desc:'宝箱を5個開封する',      reward:300,  progress:3, total:5,  done:false },
+  { id:3, title:'地域の探索者',  desc:'異なるエリアで宝箱を開く', reward:500,  progress:1, total:3,  done:false },
+  { id:4, title:'コレクター',    desc:'アイテムを10個集める',   reward:1000, progress:3, total:10, done:false },
+  { id:5, title:'ランキング入り', desc:'ランキングトップ10に入る', reward:2000, progress:0, total:1,  done:false },
 ];
 
 export default function Avatar({ onClose }: AvatarProps) {
-  const [tab, setTab]         = useState('notice');
-  const [profile, setProfile] = useState<any>(null);
-  const [items, setItems]     = useState<any[]>([]);
+  const [tab, setTab]           = useState('notice');
+  const [profile, setProfile]   = useState<any>(null);
+  const [items, setItems]       = useState<any[]>([]);
   const [equipped, setEquipped] = useState<Partial<Record<ItemCategory, Item>>>({});
   const [activeCategory, setActiveCategory] = useState<ItemCategory | 'すべて'>('すべて');
-  const [saving, setSaving]   = useState(false);
-  const [noticeOpen, setNoticeOpen] = useState<number | null>(null);
-  // お知らせ取得
-  supabase.from('notices').select('*').eq('is_published', true).order('created_at', { ascending: false })
-  .then(({ data }) => { if (data) setNotices(data); });
-// 既読取得
-supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
-  .then(({ data }) => { if (data) setReadIds(new Set(data.map((r: any) => r.notice_id))); });
-  // 着せ替え並び替え用
+  const [saving, setSaving]     = useState(false);
+  const [noticeOpen, setNoticeOpen] = useState<string | null>(null);
+  const [notices, setNotices]   = useState<any[]>([]);
+  const [readIds, setReadIds]   = useState<Set<string>>(new Set());
   const [avatarSortKey, setAvatarSortKey] = useState<'レア度' | '名前' | 'カテゴリ'>('レア度');
   const [avatarSortAsc, setAvatarSortAsc] = useState(false);
 
@@ -46,6 +41,10 @@ supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
         .then(({ data }) => { if (data) setProfile(data); });
       supabase.from('items').select('*').eq('user_id', user.id)
         .then(({ data }) => { if (data) setItems(data); });
+      supabase.from('notices').select('*').eq('is_published', true).order('created_at', { ascending: false })
+        .then(({ data }) => { if (data) setNotices(data); });
+      supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
+        .then(({ data }) => { if (data) setReadIds(new Set(data.map((r: any) => r.notice_id))); });
     });
   }, []);
 
@@ -81,7 +80,7 @@ supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
         <div style={{ fontSize:18, color:'#e8b84b', fontFamily:'Georgia,serif', letterSpacing:2 }}>マイページ</div>
       </div>
 
-      {/* ── プロフィールカード ── */}
+      {/* プロフィールカード */}
       <div style={{ background:'linear-gradient(135deg,#0f1628,#1a0a2e)', borderBottom:'1px solid rgba(232,184,75,0.1)', flexShrink:0 }}>
 
         {/* アバター表示エリア */}
@@ -92,12 +91,7 @@ supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
               src={profile.vroid_full_body_url || profile.avatar_url}
               alt="avatar"
               draggable={false}
-              style={{
-                height:'100%',
-                width:'auto',
-                objectFit:'contain',
-                filter:'drop-shadow(0 8px 24px rgba(232,184,75,0.4))',
-              }}
+              style={{ height:'100%', width:'auto', objectFit:'contain', filter:'drop-shadow(0 8px 24px rgba(232,184,75,0.4))' }}
             />
           ) : (
             <div style={{ fontSize:120 }}>👤</div>
@@ -129,7 +123,7 @@ supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
             >🎭 VRoid変更</button>
           </div>
         </div>
-        
+
         {/* プロフィール情報 */}
         <div style={{ padding:'12px 16px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -169,36 +163,28 @@ supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
       {/* コンテンツ */}
       <div style={{ flex:1, overflowY:'auto' }}>
 
-         {/* 着せ替え */}
-         {tab === 'avatar' && (
+        {/* 着せ替え */}
+        {tab === 'avatar' && (
           <div style={{ padding:16 }}>
-            <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>カテゴリー ────────────</div>
+            <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:8 }}>カテゴリー ────────────</div>
             <div style={{ display:'flex', gap:6, overflowX:'auto', marginBottom:10, paddingBottom:4 }}>
-              {['すべて', ...WEARABLE_CATEGORIES].map(cat => (
-                <button key={cat} onClick={() => setActiveCategory(cat as any)} style={{ flexShrink:0, padding:'6px 12px', background:activeCategory===cat?'rgba(232,184,75,0.15)':'rgba(255,255,255,0.04)', border:`1px solid ${activeCategory===cat?'#e8b84b':'rgba(255,255,255,0.1)'}`, borderRadius:20, color:activeCategory===cat?'#e8b84b':'#e8d5a3', cursor:'pointer', fontSize:12, whiteSpace:'nowrap' }}>
+              {(['すべて', ...WEARABLE_CATEGORIES] as (ItemCategory | 'すべて')[]).map(cat => (
+                <button key={cat} onClick={() => setActiveCategory(cat)} style={{ flexShrink:0, padding:'6px 12px', background:activeCategory===cat?'rgba(232,184,75,0.15)':'rgba(255,255,255,0.04)', border:`1px solid ${activeCategory===cat?'#e8b84b':'rgba(255,255,255,0.1)'}`, borderRadius:20, color:activeCategory===cat?'#e8b84b':'#e8d5a3', cursor:'pointer', fontSize:12, whiteSpace:'nowrap' }}>
                   {cat}{cat !== 'すべて' && equipped[cat as ItemCategory] && <span style={{ marginLeft:4, color:'#e8b84b' }}>●</span>}
                 </button>
               ))}
             </div>
-
-            {/* 並び替えバー */}
             <div style={{ display:'flex', gap:6, marginBottom:14, overflowX:'auto' }}>
               <span style={{ fontSize:11, color:'rgba(255,255,255,0.4)', alignSelf:'center', marginRight:4, flexShrink:0 }}>並び替え：</span>
               {(['レア度', '名前', 'カテゴリ'] as const).map(key => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    if (avatarSortKey === key) setAvatarSortAsc(v => !v);
-                    else { setAvatarSortKey(key); setAvatarSortAsc(false); }
-                  }}
+                <button key={key}
+                  onClick={() => { if (avatarSortKey === key) setAvatarSortAsc(v => !v); else { setAvatarSortKey(key); setAvatarSortAsc(false); } }}
                   style={{ flexShrink:0, padding:'4px 12px', background:avatarSortKey===key?'rgba(232,184,75,0.2)':'rgba(255,255,255,0.06)', border:`1px solid ${avatarSortKey===key?'#e8b84b':'rgba(255,255,255,0.1)'}`, borderRadius:20, color:avatarSortKey===key?'#e8b84b':'rgba(255,255,255,0.5)', cursor:'pointer', fontSize:11 }}
                 >
                   {key} {avatarSortKey===key ? (avatarSortAsc ? '↑' : '↓') : ''}
                 </button>
               ))}
             </div>
-
-            <div style={{ display:'flex', gap:6, overflowX:'auto', marginBottom:16, paddingBottom:4 }}>
             {sortedWearableItems.length === 0 ? (
               <div style={{ textAlign:'center', padding:'40px 20px', opacity:0.4 }}>
                 <div style={{ fontSize:40, marginBottom:12 }}>🔒</div>
@@ -214,6 +200,7 @@ supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
                       <div style={{ fontSize:32, marginBottom:6 }}>{item.emoji}</div>
                       <div style={{ fontSize:10, color:RARITY_COLORS[item.rarity as keyof typeof RARITY_COLORS], marginBottom:2 }}>{item.rarity}</div>
                       <div style={{ fontSize:12, color:'#e8d5a3' }}>{item.name}</div>
+                      <div style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{item.category}</div>
                       {isEquipped && <div style={{ position:'absolute', top:6, right:6, background:'#e8b84b', color:'#1a0e00', fontSize:9, padding:'2px 5px', borderRadius:6, fontWeight:700 }}>装備中</div>}
                     </div>
                   );
@@ -236,8 +223,7 @@ supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
                 <p style={{ fontSize:13 }}>お知らせはありません</p>
               </div>
             ) : (
-              <>
-              {notices.map(n => {
+              notices.map(n => {
                 const isRead = readIds.has(n.id);
                 return (
                   <div key={n.id}
@@ -258,9 +244,7 @@ supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
                       {isRead && <div style={{ width:8, height:8, borderRadius:'50%', background:'rgba(255,255,255,0.15)', flexShrink:0 }}/>}
                       <div style={{ flex:1 }}>
                         <div style={{ fontSize:13, fontWeight:700, color:isRead?'rgba(232,213,163,0.5)':'#e8d5a3' }}>{n.title}</div>
-                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>
-                          {new Date(n.created_at).toLocaleDateString('ja-JP')}
-                        </div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{new Date(n.created_at).toLocaleDateString('ja-JP')}</div>
                       </div>
                       {!isRead && <div style={{ fontSize:9, background:'#e8b84b', color:'#1a0e00', padding:'2px 6px', borderRadius:10, fontWeight:700, flexShrink:0 }}>NEW</div>}
                       <span style={{ color:'rgba(255,255,255,0.3)', fontSize:12, marginLeft:4 }}>{noticeOpen===n.id?'▲':'▼'}</span>
@@ -271,13 +255,9 @@ supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
                   </div>
                 );
               })
-            })}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ミッション */}
+            )}
+          </div>
+        )}
 
         {/* ミッション */}
         {tab === 'mission' && (
@@ -324,14 +304,14 @@ supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
             <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>設定 ──────────────────</div>
             {[
               { label:'プッシュ通知', desc:'宝箱情報などの通知を受け取る' },
-              { label:'位置情報', desc:'GPS機能を有効にする' },
-              { label:'サウンド', desc:'効果音・BGMのオン/オフ' },
+              { label:'位置情報',    desc:'GPS機能を有効にする' },
+              { label:'サウンド',    desc:'効果音・BGMのオン/オフ' },
               { label:'ダークモード', desc:'画面の表示モード' },
             ].map((s, i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                 <div>
-                <div style={{ fontSize:14, color:'#e8d5a3' }}>{s.label}</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{s.desc}</div>
+                  <div style={{ fontSize:14, color:'#e8d5a3' }}>{s.label}</div>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{s.desc}</div>
                 </div>
                 <div style={{ width:44, height:24, borderRadius:12, background:'rgba(232,184,75,0.3)', position:'relative', cursor:'pointer' }}>
                   <div style={{ width:20, height:20, borderRadius:'50%', background:'#e8b84b', position:'absolute', top:2, right:2, transition:'left 0.2s' }}/>
