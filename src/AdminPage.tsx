@@ -57,14 +57,161 @@ function makeIcon(type: string, selected = false) {
 }
 
 const EMPTY: Chest = { name:'', type:'地域クーポン', lat:0, lng:0, gold_amount:100, is_active:true, shop_name:'', shop_photo:'', shop_url:'', shop_tel:'', description:'', unlock_mode:'gps', appear_radius:50, qr_code:'', reward_type:'gold', reward_name:'', reward_image_url:'', reward_description:'', reward_gold:0, open_limit:'once' };
+function CollectionAdmin({ chests }: { chests: Chest[] }) {
+  const [collections, setCollections] = useState<any[]>([]);
+  const [editing, setEditing] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState('');
 
+  useEffect(() => { fetchCollections(); }, []);
+
+  async function fetchCollections() {
+    const { data } = await supabase
+      .from('collections')
+      .select('*, collection_chests(chest_id)')
+      .order('created_at', { ascending: false });
+    setCollections(data ?? []);
+  }
+
+  async function handleSave() {
+    if (!editing?.name?.trim()) return;
+    setSaving(true);
+    const { chestIds, ...colData } = editing;
+    
+    let colId = editing.id;
+    if (editing.id) {
+      await supabase.from('collections').update(colData).eq('id', editing.id);
+    } else {
+      const { data } = await supabase.from('collections').insert(colData).select().maybeSingle();
+      colId = data?.id;
+    }
+    
+    if (colId && chestIds) {
+      await supabase.from('collection_chests').delete().eq('collection_id', colId);
+      if (chestIds.length > 0) {
+        await supabase.from('collection_chests').insert(
+          chestIds.map((cid: string) => ({ collection_id: colId, chest_id: cid }))
+        );
+      }
+    }
+    
+    setSaving(false);
+    setEditing(null);
+    setToast('✅ 保存しました');
+    setTimeout(() => setToast(''), 3000);
+    fetchCollections();
+  }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm('削除しますか？')) return;
+    await supabase.from('collections').delete().eq('id', id);
+    fetchCollections();
+  }
+
+  const inp: React.CSSProperties = { width:'100%', padding:'8px 10px', marginTop:4, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:8, color:'#e8d5a3', fontSize:13, boxSizing:'border-box' };
+
+  return (
+    <div style={{ flex:1, overflowY:'auto', padding:16 }}>
+      <button onClick={() => setEditing({ name:'', description:'', category:'', reward_name:'', reward_image_url:'', reward_description:'', is_active:true, chestIds:[] })}
+        style={{ width:'100%', padding:'12px', background:'rgba(255,215,0,0.15)', border:'1px solid #ffd700', borderRadius:8, color:'#ffd700', cursor:'pointer', fontSize:14, marginBottom:16 }}>
+        ＋ 新しいコレクションを追加
+      </button>
+
+      {/* 編集フォーム */}
+      {editing && (
+        <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:12, padding:16, marginBottom:16, border:'1px solid rgba(255,215,0,0.2)' }}>
+          <div style={{ fontSize:14, color:'#ffd700', fontWeight:700, marginBottom:12 }}>
+            {editing.id ? '✏️ 編集' : '➕ 新規作成'}
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <label style={{ fontSize:11, color:'#a89bc0' }}>コレクション名 *
+              <input value={editing.name} onChange={e => setEditing({...editing, name:e.target.value})} placeholder="例：日本動物園コンプリート" style={inp}/>
+            </label>
+            <label style={{ fontSize:11, color:'#a89bc0' }}>カテゴリー
+              <input value={editing.category} onChange={e => setEditing({...editing, category:e.target.value})} placeholder="例：動物園・寺・神社" style={inp}/>
+            </label>
+            <label style={{ fontSize:11, color:'#a89bc0' }}>説明
+              <input value={editing.description} onChange={e => setEditing({...editing, description:e.target.value})} placeholder="例：日本全国の動物園を制覇！" style={inp}/>
+            </label>
+            <div style={{ fontSize:11, color:'#ffd700', marginTop:4 }}>🎁 特別報酬</div>
+            <label style={{ fontSize:11, color:'#a89bc0' }}>報酬アイテム名
+              <input value={editing.reward_name} onChange={e => setEditing({...editing, reward_name:e.target.value})} placeholder="例：伝説の動物使いアバター" style={inp}/>
+            </label>
+            <label style={{ fontSize:11, color:'#a89bc0' }}>報酬画像URL
+              <input value={editing.reward_image_url} onChange={e => setEditing({...editing, reward_image_url:e.target.value})} placeholder="https://..." style={inp}/>
+              {editing.reward_image_url && <img src={editing.reward_image_url} alt="" style={{ width:60, height:60, borderRadius:8, marginTop:4, objectFit:'cover' }}/>}
+            </label>
+            <label style={{ fontSize:11, color:'#a89bc0' }}>報酬説明
+              <input value={editing.reward_description} onChange={e => setEditing({...editing, reward_description:e.target.value})} placeholder="例：全動物園制覇者だけの限定アバター" style={inp}/>
+            </label>
+            <div style={{ fontSize:11, color:'#ffd700', marginTop:4 }}>📦 対象宝箱を選択</div>
+            <div style={{ maxHeight:200, overflowY:'auto', background:'rgba(0,0,0,0.3)', borderRadius:8, padding:8 }}>
+              {chests.map(c => {
+                const selected = (editing.chestIds ?? []).includes(c.id);
+                return (
+                  <div key={c.id} onClick={() => {
+                    const ids = editing.chestIds ?? [];
+                    setEditing({...editing, chestIds: selected ? ids.filter((id:string) => id !== c.id) : [...ids, c.id]});
+                  }} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 8px', cursor:'pointer', borderRadius:6, background:selected?'rgba(255,215,0,0.1)':'transparent', marginBottom:2 }}>
+                    <div style={{ width:16, height:16, borderRadius:4, border:`2px solid ${selected?'#ffd700':'rgba(255,255,255,0.2)'}`, background:selected?'#ffd700':'transparent', flexShrink:0 }}/>
+                    <span style={{ fontSize:12, color: selected?'#ffd700':'#e8d5a3' }}>{c.name}</span>
+                    <span style={{ fontSize:10, color:'rgba(255,255,255,0.3)', marginLeft:'auto' }}>{c.type}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ fontSize:11, color:'rgba(255,215,0,0.5)' }}>選択中：{(editing.chestIds ?? []).length}個</div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:'10px', background:'#c8a217', border:'none', borderRadius:8, color:'#1a0e00', fontWeight:700, cursor:'pointer' }}>
+                {saving ? '保存中...' : '💾 保存'}
+              </button>
+              <button onClick={() => setEditing(null)} style={{ flex:1, padding:'10px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:8, color:'#e8d5a3', cursor:'pointer' }}>
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* コレクション一覧 */}
+      {collections.length === 0 ? (
+        <div style={{ textAlign:'center', opacity:0.4, marginTop:40 }}>
+          <div style={{ fontSize:40 }}>🏆</div>
+          <p style={{ fontSize:13, marginTop:12 }}>コレクションがまだありません</p>
+        </div>
+      ) : collections.map(col => (
+        <div key={col.id} style={{ background:'rgba(255,255,255,0.04)', borderRadius:12, padding:14, marginBottom:10, border:'1px solid rgba(255,215,0,0.15)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div>
+              <div style={{ fontWeight:700, fontSize:14, color:'#ffd700' }}>🏆 {col.name}</div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>{col.category} · 対象宝箱：{col.collection_chests?.length ?? 0}個</div>
+              <div style={{ fontSize:11, color:'rgba(232,184,75,0.6)', marginTop:2 }}>🎁 {col.reward_name}</div>
+            </div>
+            <div style={{ display:'flex', gap:6 }}>
+              <button onClick={() => setEditing({...col, chestIds: col.collection_chests?.map((cc:any) => cc.chest_id) ?? []})}
+                style={{ width:32, height:32, background:'rgba(156,111,204,0.2)', border:'none', borderRadius:8, color:'#9c6fcc', cursor:'pointer' }}>✏️</button>
+              <button onClick={() => handleDelete(col.id)}
+                style={{ width:32, height:32, background:'rgba(204,68,68,0.2)', border:'none', borderRadius:8, color:'#cc4444', cursor:'pointer' }}>🗑️</button>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {toast && (
+        <div style={{ position:'fixed', bottom:30, left:'50%', transform:'translateX(-50%)', background:'#1e1235', border:'1px solid rgba(255,215,0,0.3)', padding:'10px 24px', borderRadius:24, fontSize:14, zIndex:99999 }}>
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}
 export default function AdminPage({ onClose }: { onClose: () => void }) {
   const [chests, setChests] = useState<Chest[]>([]);
   const [selected, setSelected] = useState<Chest | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
-  const [tab, setTab] = useState<'map'|'list'>('map');
+  const [tab, setTab] = useState<'map'|'list'|'collection'>('map');
 
   useEffect(() => { fetchChests(); }, []);
 
@@ -125,9 +272,9 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
 
       {/* タブ */}
       <div style={{ display:'flex', background:'#150d2a', borderBottom:'1px solid rgba(255,215,0,0.1)', flexShrink:0 }}>
-        {(['map','list'] as const).map(t => (
+        {(['map','list','collection'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{ flex:1, padding:12, border:'none', background:tab===t?'rgba(255,215,0,0.1)':'transparent', color:tab===t?'#ffd700':'#8a7a9b', borderBottom:tab===t?'2px solid #ffd700':'2px solid transparent', cursor:'pointer', fontSize:14 }}>
-            {t==='map'?'🗺️ 地図配置':'📋 一覧'}
+            {t==='map'?'🗺️ 地図配置':t==='list'?'📋 一覧':'🏆 コレクション'}
           </button>
         ))}
       </div>
@@ -295,6 +442,10 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
       )}
 
       {/* 一覧タブ */}
+      {/* コレクションタブ */}
+      {tab==='collection' && (
+        <CollectionAdmin chests={chests} />
+      )}
       {tab==='list' && (
         <div style={{ flex:1, overflowY:'auto', padding:16 }}>
           {chests.length===0 ? (

@@ -136,35 +136,6 @@ useEffect(() => {
 
   // GPS
   const [playerPos,   setPlayerPos]   = useState<[number, number] | null>(null);
-  const [openedChestIds, setOpenedChestIds] = useState<Set<string>>( new Set());
-
-  // 開封済み宝箱を取得
-  useEffect(() => {
-    if (!user) return;
-    const fetchOpened = async () => {
-      const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data } = await supabase
-        .from('chest_logs')
-        .select('chest_id, chests(open_limit)')
-        .eq('user_id', user.id);
-      if (data) {
-        const ids = new Set<string>();
-        data.forEach((log: any) => {
-          if (!log.chest_id) return;
-          const limit = log.chests?.open_limit ?? 'once';
-          if (limit === 'once') {
-            ids.add(String(log.chest_id));
-          } else if (limit === 'daily') {
-            if (log.obtained_at > since24h) {
-              ids.add(String(log.chest_id));
-            }
-          }
-        });
-        setOpenedChestIds(ids);
-      }
-    };
-    fetchOpened();
-  }, [user]);
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY ?? '',
@@ -190,6 +161,8 @@ useEffect(() => {
   const [user,         setUser]         = useState<any>(null);
   const [profile,      setProfile]      = useState<any>(null);
   const [authLoading,  setAuthLoading]  = useState(true);
+  const [openedChestIds, setOpenedChestIds] = useState<Set<string>>(new Set());
+  const [collectionReward, setCollectionReward] = useState<any>(null);
 
   // ── Effects ────────────────────────────────────────────────
 
@@ -204,6 +177,34 @@ useEffect(() => {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+　// 開封済み宝箱を取得
+useEffect(() => {
+  if (!user) return;
+  const fetchOpened = async () => {
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data } = await supabase
+      .from('chest_logs')
+      .select('chest_id, chests(open_limit)')
+      .eq('user_id', user.id);
+    if (data) {
+      const ids = new Set<string>();
+      data.forEach((log: any) => {
+        if (!log.chest_id) return;
+        const limit = log.chests?.open_limit ?? 'once';
+        if (limit === 'once') {
+          ids.add(String(log.chest_id));
+        } else if (limit === 'daily') {
+          if (log.obtained_at > since24h) {
+            ids.add(String(log.chest_id));
+          }
+        }
+      });
+      setOpenedChestIds(ids);
+    }
+  };
+  fetchOpened();
+}, [user]);
 
   // プロフィール取得
   useEffect(() => {
@@ -310,6 +311,47 @@ useEffect(() => {
       gold_earned: rewardModal.gold,
       chest_id:   rewardModal.chestId ?? null,
     });
+    // コレクション達成チェック
+    if (rewardModal.chestId) {
+      const { data: cols } = await supabase
+        .from('collection_chests')
+        .select('collection_id')
+        .eq('chest_id', rewardModal.chestId);
+      if (cols && cols.length > 0) {
+        for (const col of cols) {
+          const { data: colChests } = await supabase
+            .from('collection_chests')
+            .select('chest_id')
+            .eq('collection_id', col.collection_id);
+          if (!colChests) continue;
+          const { data: userLogs } = await supabase
+            .from('chest_logs')
+            .select('chest_id')
+            .eq('user_id', user.id)
+            .in('chest_id', colChests.map((c: any) => c.chest_id));
+          if (userLogs && userLogs.length >= colChests.length) {
+            const { data: existing } = await supabase
+              .from('collection_rewards')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('collection_id', col.collection_id)
+              .maybeSingle();
+            if (!existing) {
+              await supabase.from('collection_rewards').insert({
+                user_id: user.id,
+                collection_id: col.collection_id,
+              });
+              const { data: colInfo } = await supabase
+                .from('collections')
+                .select('*')
+                .eq('id', col.collection_id)
+                .maybeSingle();
+              if (colInfo) setTimeout(() => setCollectionReward(colInfo), 1500);
+            }
+          }
+        }
+      }
+    }
     setRewardModal(null);
     setModalRevealed(false);
   }, [rewardModal, totalGold, user]);
@@ -644,6 +686,27 @@ useEffect(() => {
                 setShowAR(true);
               }}>📷 ARで開ける</button>
             </div>
+          </div>
+        </div>
+      )}
+
+　　　{/* ── コレクション達成モーダル ── */}
+      {collectionReward && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:99997 }}>
+          <div style={{ background:'linear-gradient(135deg,#1a0a2e,#2d1b69)', border:'2px solid #e8b84b', borderRadius:20, padding:32, maxWidth:340, width:'90%', textAlign:'center', boxShadow:'0 0 40px rgba(232,184,75,0.4)' }}>
+            <div style={{ fontSize:48, marginBottom:12 }}>🏆</div>
+            <div style={{ fontSize:11, letterSpacing:4, color:'rgba(232,184,75,0.6)', marginBottom:8 }}>COLLECTION COMPLETE!</div>
+            <h2 style={{ fontSize:20, color:'#e8b84b', fontFamily:'Georgia,serif', marginBottom:8 }}>{collectionReward.name}</h2>
+            <p style={{ fontSize:13, color:'rgba(255,255,255,0.6)', marginBottom:20, lineHeight:1.6 }}>{collectionReward.description}</p>
+            <div style={{ background:'rgba(232,184,75,0.1)', border:'1px solid rgba(232,184,75,0.3)', borderRadius:12, padding:16, marginBottom:20 }}>
+              <div style={{ fontSize:11, color:'rgba(232,184,75,0.5)', marginBottom:8 }}>獲得した特別アイテム</div>
+              {collectionReward.reward_image_url && <img src={collectionReward.reward_image_url} alt={collectionReward.reward_name} style={{ width:80, height:80, objectFit:'cover', borderRadius:12, marginBottom:8 }}/>}
+              <div style={{ fontSize:16, fontWeight:700, color:'#e8b84b' }}>{collectionReward.reward_name}</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.5)', marginTop:4 }}>{collectionReward.reward_description}</div>
+            </div>
+            <button onClick={() => setCollectionReward(null)} style={{ width:'100%', padding:'14px', background:'linear-gradient(135deg,#c8900a,#e8b84b)', border:'none', borderRadius:10, color:'#1a0e00', fontWeight:800, fontSize:15, cursor:'pointer', fontFamily:'Georgia,serif', letterSpacing:2 }}>
+              ✨ 受け取る！
+            </button>
           </div>
         </div>
       )}
