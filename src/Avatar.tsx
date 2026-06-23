@@ -113,31 +113,7 @@ export default function Avatar({ onClose }: AvatarProps) {
             >🎭 VRoid変更</button>
           </div>
         </div>
-        <div style={{ display:'flex', justifyContent:'center', gap:10, padding:'10px 16px 4px' }}>
-          {REACTIONS.map(r => (
-            <button
-              key={r.type}
-              onClick={() => triggerReaction(r.type)}
-              style={{
-                padding:'6px 14px',
-                background: reaction === r.type ? 'rgba(232,184,75,0.25)' : 'rgba(255,255,255,0.06)',
-                border:`1px solid ${reaction === r.type ? '#e8b84b' : 'rgba(255,255,255,0.12)'}`,
-                borderRadius:20,
-                color: reaction === r.type ? '#e8b84b' : 'rgba(255,255,255,0.6)',
-                cursor:'pointer',
-                fontSize:11,
-                display:'flex',
-                alignItems:'center',
-                gap:4,
-                transition:'all 0.2s',
-              }}
-            >
-              <span>{r.emoji}</span>
-              <span>{r.label}</span>
-            </button>
-          ))}
-        </div>
-
+        
         {/* プロフィール情報 */}
         <div style={{ padding:'12px 16px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
