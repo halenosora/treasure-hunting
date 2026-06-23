@@ -236,7 +236,8 @@ supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
                 <p style={{ fontSize:13 }}>お知らせはありません</p>
               </div>
             ) : (
-              notices.map(n => {
+              <>
+              {notices.map(n => {
                 const isRead = readIds.has(n.id);
                 return (
                   <div key={n.id}
@@ -270,9 +271,13 @@ supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
                   </div>
                 );
               })
-            )}
-          </div>
-        )}
+            })}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ミッション */}
 
         {/* ミッション */}
         {tab === 'mission' && (
