@@ -46,9 +46,8 @@ export default function Avatar({ onClose }: AvatarProps) {
         .then(({ data }) => { if (data) { setNotices(data); setNoticesLoaded(true); } });
       supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
         .then(({ data }) => { if (data) setReadIds(new Set(data.map((r: any) => r.notice_id))); });
-    });
-  });
-}, [tab]);
+      });
+    }, [tab]);
 
   const wearableItems = items.filter(i => WEARABLE_CATEGORIES.includes(i.category as ItemCategory));
 
