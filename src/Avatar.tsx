@@ -33,7 +33,7 @@ export default function Avatar({ onClose }: AvatarProps) {
   const [profile, setProfile] = useState<any>(null);
   const [items, setItems]     = useState<any[]>([]);
   const [equipped, setEquipped] = useState<Partial<Record<ItemCategory, Item>>>({});
-  const [activeCategory, setActiveCategory] = useState<ItemCategory>('帽子');
+  const [activeCategory, setActiveCategory] = useState<ItemCategory | 'すべて'>('すべて');
   const [saving, setSaving]   = useState(false);
   const [noticeOpen, setNoticeOpen] = useState<number | null>(null);
   // 着せ替え並び替え用
