@@ -13,13 +13,6 @@ const MENU_ITEMS = [
   { id: 'setting',  icon: '⚙️', label: '設定' },
 ];
 
-// ✅ TERRAHUNT → NEXARA に修正
-const NOTICES = [
-  { id:1, title:'NEXARAへようこそ！', body:'宝箱を探して冒険を始めよう！', date:'2026-06-22', isNew:true },
-  { id:2, title:'新エリア追加のお知らせ', body:'横浜エリアに新しい宝箱が追加されました。', date:'2026-06-20', isNew:true },
-  { id:3, title:'メンテナンス完了', body:'システムメンテナンスが完了しました。', date:'2026-06-18', isNew:false },
-];
-
 const MISSIONS = [
   { id:1, title:'初めての宝箱',     desc:'宝箱を1個開封する',     reward:100,  progress:1, total:1,  done:true },
   { id:2, title:'宝探し初級',      desc:'宝箱を5個開封する',     reward:300,  progress:3, total:5,  done:false },
@@ -36,6 +29,12 @@ export default function Avatar({ onClose }: AvatarProps) {
   const [activeCategory, setActiveCategory] = useState<ItemCategory | 'すべて'>('すべて');
   const [saving, setSaving]   = useState(false);
   const [noticeOpen, setNoticeOpen] = useState<number | null>(null);
+  // お知らせ取得
+  supabase.from('notices').select('*').eq('is_published', true).order('created_at', { ascending: false })
+  .then(({ data }) => { if (data) setNotices(data); });
+// 既読取得
+supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
+  .then(({ data }) => { if (data) setReadIds(new Set(data.map((r: any) => r.notice_id))); });
   // 着せ替え並び替え用
   const [avatarSortKey, setAvatarSortKey] = useState<'レア度' | '名前' | 'カテゴリ'>('レア度');
   const [avatarSortAsc, setAvatarSortAsc] = useState(false);
@@ -231,21 +230,47 @@ export default function Avatar({ onClose }: AvatarProps) {
         {tab === 'notice' && (
           <div style={{ padding:16 }}>
             <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>お知らせ ──────────────</div>
-            {NOTICES.map(n => (
-              <div key={n.id} onClick={() => setNoticeOpen(noticeOpen===n.id?null:n.id)} style={{ marginBottom:10, background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, overflow:'hidden', cursor:'pointer' }}>
-                <div style={{ padding:'12px 14px', display:'flex', alignItems:'center', gap:10 }}>
-                  {n.isNew && <div style={{ width:6, height:6, borderRadius:'50%', background:'#e8b84b', flexShrink:0 }}/>}
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:n.isNew?'#e8d5a3':'rgba(232,213,163,0.6)' }}>{n.title}</div>
-                    <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{n.date}</div>
-                  </div>
-                  <span style={{ color:'rgba(255,255,255,0.3)', fontSize:12 }}>{noticeOpen===n.id?'▲':'▼'}</span>
-                </div>
-                {noticeOpen===n.id && (
-                  <div style={{ padding:'0 14px 14px', fontSize:13, color:'rgba(232,213,163,0.7)', lineHeight:1.6 }}>{n.body}</div>
-                )}
+            {notices.length === 0 ? (
+              <div style={{ textAlign:'center', padding:'40px 20px', opacity:0.4 }}>
+                <div style={{ fontSize:40, marginBottom:12 }}>📢</div>
+                <p style={{ fontSize:13 }}>お知らせはありません</p>
               </div>
-            ))}
+            ) : (
+              notices.map(n => {
+                const isRead = readIds.has(n.id);
+                return (
+                  <div key={n.id}
+                    onClick={async () => {
+                      setNoticeOpen(noticeOpen === n.id ? null : n.id);
+                      if (!isRead) {
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) {
+                          await supabase.from('notice_reads').insert({ user_id: user.id, notice_id: n.id });
+                          setReadIds(prev => new Set([...prev, n.id]));
+                        }
+                      }
+                    }}
+                    style={{ marginBottom:10, background:isRead?'rgba(255,255,255,0.02)':'rgba(255,255,255,0.06)', border:`1px solid ${isRead?'rgba(255,255,255,0.06)':'rgba(232,184,75,0.2)'}`, borderRadius:10, overflow:'hidden', cursor:'pointer' }}
+                  >
+                    <div style={{ padding:'12px 14px', display:'flex', alignItems:'center', gap:10 }}>
+                      {!isRead && <div style={{ width:8, height:8, borderRadius:'50%', background:'#e8b84b', flexShrink:0 }}/>}
+                      {isRead && <div style={{ width:8, height:8, borderRadius:'50%', background:'rgba(255,255,255,0.15)', flexShrink:0 }}/>}
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:isRead?'rgba(232,213,163,0.5)':'#e8d5a3' }}>{n.title}</div>
+                        <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>
+                          {new Date(n.created_at).toLocaleDateString('ja-JP')}
+                        </div>
+                      </div>
+                      {!isRead && <div style={{ fontSize:9, background:'#e8b84b', color:'#1a0e00', padding:'2px 6px', borderRadius:10, fontWeight:700, flexShrink:0 }}>NEW</div>}
+                      <span style={{ color:'rgba(255,255,255,0.3)', fontSize:12, marginLeft:4 }}>{noticeOpen===n.id?'▲':'▼'}</span>
+                    </div>
+                    {noticeOpen===n.id && (
+                      <div style={{ padding:'0 14px 14px', fontSize:13, color:'rgba(232,213,163,0.7)', lineHeight:1.6 }}>{n.body}</div>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
 
