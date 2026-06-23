@@ -269,22 +269,6 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
     ))}
   </div>
 </label>
-
-                <div style={{ borderTop:'1px solid rgba(255,255,255,0.1)', paddingTop:10, fontSize:12, color:'#ffd700' }}>🔒 開封制限</div>
-                <label style={lbl}>制限タイプ
-                  <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:4 }}>
-                    {([
-                      ['once',      '🔒 永久1回のみ（NFT・エピックアイテム）'],
-                      ['daily',     '🔄 24時間ごとにリセット（クーポン等）'],
-                      ['unlimited', '♾️ 制限なし（テスト用）'],
-                    ] as const).map(([val, label]) => (
-                      <button key={val} onClick={() => setSelected({...selected, open_limit:val})}
-                        style={{ padding:'8px 10px', border:`2px solid ${selected.open_limit===val?'#ffd700':'rgba(255,255,255,0.1)'}`, background:selected.open_limit===val?'rgba(255,215,0,0.15)':'transparent', color:'#e8d5a3', borderRadius:8, cursor:'pointer', fontSize:12, textAlign:'left' }}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </label>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <div onClick={() => setSelected({...selected, is_active:!selected.is_active})}
                     style={{ width:44, height:24, borderRadius:12, background:selected.is_active?'#4CAF50':'#555', position:'relative', cursor:'pointer', flexShrink:0 }}>
