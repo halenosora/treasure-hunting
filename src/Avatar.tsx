@@ -67,72 +67,58 @@ export default function Avatar({ onClose }: AvatarProps) {
       </div>
 
       {/* プロフィールカード */}
-      <div style={{ padding:'16px', background:'linear-gradient(135deg,#0f1628,#1a0a2e)', borderBottom:'1px solid rgba(232,184,75,0.1)', flexShrink:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-          {/* アバター */}
-          <div style={{ position:'relative', flexShrink:0 }}>
-            <div style={{ width:72, height:72, borderRadius:'50%', border:'2px solid rgba(232,184,75,0.5)', overflow:'hidden', background:'rgba(0,0,0,0.3)', display:'flex', alignItems:'center', justifyContent:'center', animation:'floatAv 3s ease-in-out infinite' }}>
-              {profile?.avatar_url
-                ? <img src={profile.avatar_url} alt="avatar" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                : <span style={{ fontSize:36 }}>👤</span>
-              }
+      <div style={{ background:'linear-gradient(135deg,#0f1628,#1a0a2e)', borderBottom:'1px solid rgba(232,184,75,0.1)', flexShrink:0 }}>
+        {/* 全身アバター表示エリア */}
+        <div style={{ position:'relative', height:280, display:'flex', alignItems:'flex-end', justifyContent:'center', overflow:'hidden' }}>
+          <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at center bottom,rgba(232,184,75,0.1) 0%,transparent 70%)' }}/>
+          {profile?.vroid_full_body_url ? (
+            <img src={profile.vroid_full_body_url} alt="avatar" style={{ height:'100%', width:'auto', objectFit:'contain', animation:'floatAv 3s ease-in-out infinite', filter:'drop-shadow(0 8px 20px rgba(232,184,75,0.3))' }}/>
+          ) : profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt="avatar" style={{ height:'100%', width:'auto', objectFit:'contain', animation:'floatAv 3s ease-in-out infinite', filter:'drop-shadow(0 8px 20px rgba(232,184,75,0.3))' }}/>
+          ) : (
+            <div style={{ fontSize:100, animation:'floatAv 3s ease-in-out infinite' }}>👤</div>
+          )}
+          <div style={{ position:'absolute', top:12, right:12, background:'#e8b84b', color:'#1a0e00', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>
+            Lv.{profile?.adventure_level ?? 1}
+          </div>
+          <div style={{ position:'absolute', top:12, left:12 }}>
+            <button
+              onClick={async () => {
+                const clientId = process.env.REACT_APP_VROID_CLIENT_ID;
+                const redirectUri = `${window.location.origin}/vroid-callback`;
+                const array = new Uint8Array(32);
+                crypto.getRandomValues(array);
+                const codeVerifier = btoa(Array.from(array, b => String.fromCharCode(b)).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                const encoder = new TextEncoder();
+                const data = encoder.encode(codeVerifier);
+                const digest = await crypto.subtle.digest('SHA-256', data);
+                const codeChallenge = btoa(Array.from(new Uint8Array(digest), b => String.fromCharCode(b)).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                const stateArray = new Uint8Array(16);
+                crypto.getRandomValues(stateArray);
+                const state = btoa(Array.from(stateArray, b => String.fromCharCode(b)).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+                sessionStorage.setItem('vroid_code_verifier', codeVerifier);
+                sessionStorage.setItem('vroid_state', state);
+                const params = new URLSearchParams({ client_id: clientId ?? '', redirect_uri: redirectUri, response_type: 'code', scope: 'default', state, code_challenge: codeChallenge, code_challenge_method: 'S256' });
+                window.location.href = `https://hub.vroid.com/oauth/authorize?${params}`;
+              }}
+              style={{ padding:'6px 12px', background:'rgba(100,149,237,0.15)', border:'1px solid rgba(100,149,237,0.4)', borderRadius:20, color:'#6495ed', cursor:'pointer', fontSize:10, fontFamily:'sans-serif' }}
+            >🎭 VRoid変更</button>
+          </div>
+        </div>
+        {/* プロフィール情報 */}
+        <div style={{ padding:'12px 16px' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div>
+              <div style={{ fontSize:17, fontWeight:700, color:'#e8d5a3', fontFamily:'Georgia,serif' }}>{profile?.username ?? '冒険者'}</div>
+              <div style={{ fontSize:11, color:'rgba(232,184,75,0.7)', marginTop:2 }}>{profile?.avatar_title ?? '新米冒険者'}</div>
             </div>
-            <div style={{ position:'absolute', bottom:0, right:0, background:'#e8b84b', color:'#1a0e00', fontSize:10, fontWeight:700, padding:'2px 5px', borderRadius:8 }}>
-              Lv.{profile?.adventure_level ?? 1}
+            <div style={{ textAlign:'right' }}>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>💰 {(profile?.gold ?? 0).toLocaleString()} G</div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)', marginTop:2 }}>📦 宝箱 {items.length}個</div>
             </div>
           </div>
-          {/* 情報 */}
-          <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:17, fontWeight:700, color:'#e8d5a3', fontFamily:'Georgia,serif' }}>{profile?.username ?? '冒険者'}</div>
-            <div style={{ fontSize:11, color:'rgba(232,184,75,0.7)', marginTop:2 }}>{profile?.avatar_title ?? '新米冒険者'}</div>
-            <div style={{ display:'flex', gap:12, marginTop:6 }}>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>💰 {(profile?.gold ?? 0).toLocaleString()} G</div>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>📦 宝箱 {items.length}個</div>
-            </div>
-            </div>
         </div>
-
-        {/* VRoid連携ボタン */}
-        <button
-          onClick={async () => {
-            const clientId = process.env.REACT_APP_VROID_CLIENT_ID;
-            const redirectUri = `${window.location.origin}/vroid-callback`;
-
-            const array = new Uint8Array(32);
-            crypto.getRandomValues(array);
-            const codeVerifier = btoa(Array.from(array, b => String.fromCharCode(b)).join(''))
-              .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-            const encoder = new TextEncoder();
-            const data = encoder.encode(codeVerifier);
-            const digest = await crypto.subtle.digest('SHA-256', data);
-            const codeChallenge = btoa(Array.from(new Uint8Array(digest), b => String.fromCharCode(b)).join(''))
-              .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-            const stateArray = new Uint8Array(16);
-            crypto.getRandomValues(stateArray);
-            const state = btoa(Array.from(stateArray, b => String.fromCharCode(b)).join(''))
-              .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-            sessionStorage.setItem('vroid_code_verifier', codeVerifier);
-            sessionStorage.setItem('vroid_state', state);
-
-            const params = new URLSearchParams({
-              client_id: clientId ?? '',
-              redirect_uri: redirectUri,
-              response_type: 'code',
-              scope: 'default',
-              state,
-              code_challenge: codeChallenge,
-              code_challenge_method: 'S256',
-            });
-            window.location.href = `https://hub.vroid.com/oauth/authorize?${params}`;
-          }}
-          style={{ width:'100%', marginTop:10, padding:'8px', background:'rgba(100,149,237,0.1)', border:'1px solid rgba(100,149,237,0.3)', borderRadius:8, color:'#6495ed', cursor:'pointer', fontSize:12, fontFamily:'sans-serif', letterSpacing:1 }}
-        >
-          🎭 VRoid Hubと連携してアバターを設定
-        </button>
-
+        
         {/* ゴールドバー */}
         <div style={{ marginTop:12 }}>
           <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'rgba(232,184,75,0.5)', marginBottom:4 }}>

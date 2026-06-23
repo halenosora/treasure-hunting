@@ -58,12 +58,11 @@ export default function VRoidCallback() {
         if (firstModel) {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            const avatarUrl = firstModel.portrait_image?.sq300?.url 
-              ?? firstModel.portrait_image?.sq600?.url 
-              ?? firstModel.full_body_image?.w300?.url
-              ?? '';
+            const avatarUrl = firstModel.portrait_image?.sq300?.url ?? '';
+            const fullBodyUrl = firstModel.full_body_image?.w600?.url ?? firstModel.full_body_image?.w300?.url ?? '';
             await supabase.from('profiles').update({
               avatar_url: avatarUrl,
+              vroid_full_body_url: fullBodyUrl,
             }).eq('id', user.id);
             setStatus('連携完了！');
           }
