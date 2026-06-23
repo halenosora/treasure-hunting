@@ -89,8 +89,21 @@ export default function Avatar({ onClose }: AvatarProps) {
               <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>💰 {(profile?.gold ?? 0).toLocaleString()} G</div>
               <div style={{ fontSize:11, color:'rgba(255,255,255,0.5)' }}>📦 宝箱 {items.length}個</div>
             </div>
-          </div>
+            </div>
         </div>
+
+        {/* VRoid連携ボタン */}
+        <button
+          onClick={() => {
+            const clientId = process.env.REACT_APP_VROID_CLIENT_ID;
+            const redirectUri = encodeURIComponent(`${window.location.origin}/vroid-callback`);
+            window.location.href = `https://hub.vroid.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=default`;
+          }}
+          style={{ width:'100%', marginTop:10, padding:'8px', background:'rgba(100,149,237,0.1)', border:'1px solid rgba(100,149,237,0.3)', borderRadius:8, color:'#6495ed', cursor:'pointer', fontSize:12, fontFamily:'sans-serif', letterSpacing:1 }}
+        >
+          🎭 VRoid Hubと連携してアバターを設定
+        </button>
+
         {/* ゴールドバー */}
         <div style={{ marginTop:12 }}>
           <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'rgba(232,184,75,0.5)', marginBottom:4 }}>

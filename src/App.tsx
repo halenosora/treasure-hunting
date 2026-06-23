@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleMap, useJsApiLoader, OverlayView } from '@react-google-maps/api';
 import { supabase } from './supabase';
+import VRoidCallback from './VRoidCallback';
 import ARCamera from './ARCamera';
 import Avatar from './Avatar';
 import Ranking from './Ranking';
@@ -369,6 +370,11 @@ useEffect(() => {
       <p style={{ color:'#e8b84b', fontSize:18 }}>読み込み中...</p>
     </div>
   );
+
+　// VRoidコールバック処理
+if (window.location.pathname === '/vroid-callback') {
+  return <VRoidCallback />;
+}
 
   if (!user) return (
     <Auth onLogin={() =>
