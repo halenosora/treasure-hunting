@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
-import { RARITY_COLORS, WEARABLE_CATEGORIES, Item, ItemCategory } from './items';
+import { RARITY_COLORS, WEARABLE_CATEGORIES, Item, ItemCategory, RARITY_ORDER } from './items';
 import './Avatar.css';
 
 interface AvatarProps { onClose: () => void; }
@@ -36,6 +36,9 @@ export default function Avatar({ onClose }: AvatarProps) {
   const [activeCategory, setActiveCategory] = useState<ItemCategory>('帽子');
   const [saving, setSaving]   = useState(false);
   const [noticeOpen, setNoticeOpen] = useState<number | null>(null);
+  // 着せ替え並び替え用
+  const [avatarSortKey, setAvatarSortKey] = useState<'レア度' | '名前' | 'カテゴリ'>('レア度');
+  const [avatarSortAsc, setAvatarSortAsc] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -48,7 +51,21 @@ export default function Avatar({ onClose }: AvatarProps) {
   }, []);
 
   const wearableItems = items.filter(i => WEARABLE_CATEGORIES.includes(i.category as ItemCategory));
-  const filteredItems = wearableItems.filter(i => i.category === activeCategory);
+
+  const sortedWearableItems = (activeCategory === 'すべて' ? wearableItems : wearableItems.filter(i => i.category === activeCategory))
+    .slice()
+    .sort((a, b) => {
+      let result = 0;
+      if (avatarSortKey === 'レア度') {
+        result = (RARITY_ORDER[a.rarity as keyof typeof RARITY_ORDER] ?? 0)
+               - (RARITY_ORDER[b.rarity as keyof typeof RARITY_ORDER] ?? 0);
+      } else if (avatarSortKey === '名前') {
+        result = a.name.localeCompare(b.name, 'ja');
+      } else if (avatarSortKey === 'カテゴリ') {
+        result = a.category.localeCompare(b.category, 'ja');
+      }
+      return avatarSortAsc ? result : -result;
+    });
 
   async function handleSave() {
     setSaving(true);
@@ -153,8 +170,8 @@ export default function Avatar({ onClose }: AvatarProps) {
       {/* コンテンツ */}
       <div style={{ flex:1, overflowY:'auto' }}>
 
-        {/* 着せ替え */}
-        {tab === 'avatar' && (
+         {/* 着せ替え */}
+         {tab === 'avatar' && (
           <div style={{ padding:16 }}>
             <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>カテゴリー ────────────</div>
             <div style={{ display:'flex', gap:6, overflowX:'auto', marginBottom:16, paddingBottom:4 }}>
