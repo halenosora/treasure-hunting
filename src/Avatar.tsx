@@ -31,6 +31,7 @@ export default function Avatar({ onClose }: AvatarProps) {
   const [noticeOpen, setNoticeOpen] = useState<string | null>(null);
   const [notices, setNotices]   = useState<any[]>([]);
   const [readIds, setReadIds]   = useState<Set<string>>(new Set());
+  const [noticesLoaded, setNoticesLoaded] = useState(false);
   const [avatarSortKey, setAvatarSortKey] = useState<'レア度' | '名前' | 'カテゴリ'>('レア度');
   const [avatarSortAsc, setAvatarSortAsc] = useState(false);
 
@@ -41,12 +42,13 @@ export default function Avatar({ onClose }: AvatarProps) {
         .then(({ data }) => { if (data) setProfile(data); });
       supabase.from('items').select('*').eq('user_id', user.id)
         .then(({ data }) => { if (data) setItems(data); });
-      supabase.from('notices').select('*').eq('is_published', true).order('created_at', { ascending: false })
-        .then(({ data }) => { if (data) setNotices(data); });
+        supabase.from('notices').select('*').eq('is_published', true).order('created_at', { ascending: false })
+        .then(({ data }) => { if (data) { setNotices(data); setNoticesLoaded(true); } });
       supabase.from('notice_reads').select('notice_id').eq('user_id', user.id)
         .then(({ data }) => { if (data) setReadIds(new Set(data.map((r: any) => r.notice_id))); });
     });
-  }, []);
+  });
+}, [tab]);
 
   const wearableItems = items.filter(i => WEARABLE_CATEGORIES.includes(i.category as ItemCategory));
 
