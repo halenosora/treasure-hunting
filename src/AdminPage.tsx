@@ -205,13 +205,121 @@ function CollectionAdmin({ chests }: { chests: Chest[] }) {
     </div>
   );
 }
+　function NoticeAdmin() {
+  const [notices, setNotices] = useState<any[]>([]);
+  const [editing, setEditing] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState('');
+
+  useEffect(() => { fetchNotices(); }, []);
+
+  async function fetchNotices() {
+    const { data } = await supabase.from('notices').select('*').order('created_at', { ascending: false });
+    setNotices(data ?? []);
+  }
+
+  async function handleSave() {
+    if (!editing?.title?.trim()) return;
+    setSaving(true);
+    if (editing.id) {
+      await supabase.from('notices').update({ title: editing.title, body: editing.body, is_published: editing.is_published }).eq('id', editing.id);
+    } else {
+      await supabase.from('notices').insert({ title: editing.title, body: editing.body, is_published: editing.is_published ?? true });
+    }
+    setSaving(false);
+    setEditing(null);
+    setToast('✅ 保存しました');
+    setTimeout(() => setToast(''), 3000);
+    fetchNotices();
+  }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm('削除しますか？')) return;
+    await supabase.from('notices').delete().eq('id', id);
+    fetchNotices();
+  }
+
+  const inp: React.CSSProperties = { width:'100%', padding:'8px 10px', marginTop:4, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:8, color:'#e8d5a3', fontSize:13, boxSizing:'border-box' };
+
+  return (
+    <div style={{ flex:1, overflowY:'auto', padding:16 }}>
+      <button onClick={() => setEditing({ title:'', body:'', is_published:true })}
+        style={{ width:'100%', padding:'12px', background:'rgba(255,215,0,0.15)', border:'1px solid #ffd700', borderRadius:8, color:'#ffd700', cursor:'pointer', fontSize:14, marginBottom:16 }}>
+        ＋ 新しいお知らせを追加
+      </button>
+
+      {editing && (
+        <div style={{ background:'rgba(255,255,255,0.04)', borderRadius:12, padding:16, marginBottom:16, border:'1px solid rgba(255,215,0,0.2)' }}>
+          <div style={{ fontSize:14, color:'#ffd700', fontWeight:700, marginBottom:12 }}>
+            {editing.id ? '✏️ 編集' : '➕ 新規作成'}
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <label style={{ fontSize:11, color:'#a89bc0' }}>タイトル *
+              <input value={editing.title} onChange={e => setEditing({...editing, title:e.target.value})} placeholder="例：新エリア追加のお知らせ" style={inp}/>
+            </label>
+            <label style={{ fontSize:11, color:'#a89bc0' }}>本文
+              <textarea value={editing.body} onChange={e => setEditing({...editing, body:e.target.value})} placeholder="お知らせの内容を入力してください" rows={4} style={{...inp, resize:'vertical'}}/>
+            </label>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <div onClick={() => setEditing({...editing, is_published:!editing.is_published})}
+                style={{ width:44, height:24, borderRadius:12, background:editing.is_published?'#4CAF50':'#555', position:'relative', cursor:'pointer', flexShrink:0 }}>
+                <div style={{ width:20, height:20, borderRadius:'50%', background:'#fff', position:'absolute', top:2, left:editing.is_published?22:2, transition:'left 0.2s' }}/>
+              </div>
+              <span style={{ fontSize:13 }}>{editing.is_published ? '✅ 公開中' : '⏸ 非公開'}</span>
+            </div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={handleSave} disabled={saving} style={{ flex:2, padding:'10px', background:'#c8a217', border:'none', borderRadius:8, color:'#1a0e00', fontWeight:700, cursor:'pointer' }}>
+                {saving ? '保存中...' : '💾 保存'}
+              </button>
+              <button onClick={() => setEditing(null)} style={{ flex:1, padding:'10px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:8, color:'#e8d5a3', cursor:'pointer' }}>
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {notices.length === 0 ? (
+        <div style={{ textAlign:'center', opacity:0.4, marginTop:40 }}>
+          <div style={{ fontSize:40 }}>📢</div>
+          <p style={{ fontSize:13, marginTop:12 }}>お知らせがまだありません</p>
+        </div>
+      ) : notices.map(n => (
+        <div key={n.id} style={{ background:'rgba(255,255,255,0.04)', borderRadius:12, padding:14, marginBottom:10, border:'1px solid rgba(255,215,0,0.15)' }}>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:700, fontSize:14, color:'#ffd700' }}>📢 {n.title}</div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginTop:2 }}>
+                {new Date(n.created_at).toLocaleDateString('ja-JP')} · {n.is_published ? '✅ 公開中' : '⏸ 非公開'}
+              </div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.6)', marginTop:4 }}>{n.body}</div>
+            </div>
+            <div style={{ display:'flex', gap:6, marginLeft:8 }}>
+              <button onClick={() => setEditing(n)}
+                style={{ width:32, height:32, background:'rgba(156,111,204,0.2)', border:'none', borderRadius:8, color:'#9c6fcc', cursor:'pointer' }}>✏️</button>
+              <button onClick={() => handleDelete(n.id)}
+                style={{ width:32, height:32, background:'rgba(204,68,68,0.2)', border:'none', borderRadius:8, color:'#cc4444', cursor:'pointer' }}>🗑️</button>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      {toast && (
+        <div style={{ position:'fixed', bottom:30, left:'50%', transform:'translateX(-50%)', background:'#1e1235', border:'1px solid rgba(255,215,0,0.3)', padding:'10px 24px', borderRadius:24, fontSize:14, zIndex:99999 }}>
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage({ onClose }: { onClose: () => void }) {
   const [chests, setChests] = useState<Chest[]>([]);
   const [selected, setSelected] = useState<Chest | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState('');
-  const [tab, setTab] = useState<'map'|'list'|'collection'>('map');
+  const [tab, setTab] = useState<'map'|'list'|'collection'|'notice'>('map');
 
   useEffect(() => { fetchChests(); }, []);
 
@@ -272,9 +380,9 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
 
       {/* タブ */}
       <div style={{ display:'flex', background:'#150d2a', borderBottom:'1px solid rgba(255,215,0,0.1)', flexShrink:0 }}>
-        {(['map','list','collection'] as const).map(t => (
+      {(['map','list','collection','notice'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{ flex:1, padding:12, border:'none', background:tab===t?'rgba(255,215,0,0.1)':'transparent', color:tab===t?'#ffd700':'#8a7a9b', borderBottom:tab===t?'2px solid #ffd700':'2px solid transparent', cursor:'pointer', fontSize:14 }}>
-            {t==='map'?'🗺️ 地図配置':t==='list'?'📋 一覧':'🏆 コレクション'}
+            {t==='map'?'🗺️ 地図':t==='list'?'📋 一覧':t==='collection'?'🏆 コレクション':'📢 お知らせ'}
           </button>
         ))}
       </div>
@@ -469,6 +577,11 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
             );
           })}
         </div>
+      )}
+
+　　　{/* お知らせタブ */}
+      {tab === 'notice' && (
+        <NoticeAdmin />
       )}
 
       {toast && (
