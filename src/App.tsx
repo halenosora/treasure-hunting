@@ -333,20 +333,18 @@ useEffect(() => {
             qr_code: (selectedChest as any).qr_code ?? '',
           } : undefined}
           playerPos={playerPos}
-          onClaim={(gold) => {
+          onClaim={async (gold) => {
             const newGold = totalGold + gold;
             setTotalGold(newGold); setGoldPulse(true);
             setTimeout(() => setGoldPulse(false), 600);
-            if (user) {
-              supabase.from('profiles').update({ gold: newGold }).eq('id', user.id);
-              if (selectedChest) {
-                supabase.from('chest_logs').insert({
-                  user_id: user.id,
-                  item_name: selectedChest.name,
-                  gold_earned: gold,
-                  chest_id: selectedChest.id,
-                });
-              }
+            if (user && selectedChest) {
+              await supabase.from('profiles').update({ gold: newGold }).eq('id', user.id);
+              await supabase.from('chest_logs').insert({
+                user_id:    user.id,
+                item_name:  selectedChest.name,
+                gold_earned: gold,
+                chest_id:   selectedChest.id,
+              });
             }
           }}
           />
@@ -584,15 +582,34 @@ useEffect(() => {
               }}>🗺️ 経路案内</button>
               <button className="chest-detail-ar-btn" onClick={async () => {
                 if (user && selectedChest?.id) {
-                  const { data } = await supabase
-                    .from('chest_logs')
-                    .select('id')
-                    .eq('user_id', user.id)
-                    .eq('chest_id', selectedChest.id)
-                    .maybeSingle();
-                  if (data) {
-                    alert('この宝箱はすでに開封済みです！');
-                    return;
+                  const openLimit = (selectedChest as any).open_limit ?? 'once';
+                  
+                  if (openLimit === 'once') {
+                    // 永久1回チェック
+                    const { data } = await supabase
+                      .from('chest_logs')
+                      .select('id')
+                      .eq('user_id', user.id)
+                      .eq('chest_id', selectedChest.id)
+                      .maybeSingle();
+                    if (data) {
+                      alert('この宝箱はすでに開封済みです！');
+                      return;
+                    }
+                  } else if (openLimit === 'daily') {
+                    // 24時間チェック
+                    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+                    const { data } = await supabase
+                      .from('chest_logs')
+                      .select('id')
+                      .eq('user_id', user.id)
+                      .eq('chest_id', selectedChest.id)
+                      .gte('obtained_at', since)
+                      .maybeSingle();
+                    if (data) {
+                      alert('この宝箱は24時間以内に開封済みです！次回は明日また開けられます。');
+                      return;
+                    }
                   }
                 }
                 setShowAR(true);

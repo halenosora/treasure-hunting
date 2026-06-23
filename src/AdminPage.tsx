@@ -27,6 +27,7 @@ interface Chest {
     reward_image_url: string;
     reward_description: string;
     reward_gold: number;
+    open_limit: 'once' | 'daily' | 'unlimited';
   }
 
 const TYPE_CONFIG: Record<ChestType, { color: string; emoji: string }> = {
@@ -55,7 +56,7 @@ function makeIcon(type: string, selected = false) {
   });
 }
 
-const EMPTY: Chest = { name:'', type:'地域クーポン', lat:0, lng:0, gold_amount:100, is_active:true, shop_name:'', shop_photo:'', shop_url:'', shop_tel:'', description:'', unlock_mode:'gps', appear_radius:50, qr_code:'', reward_type:'gold', reward_name:'', reward_image_url:'', reward_description:'', reward_gold:0 };
+const EMPTY: Chest = { name:'', type:'地域クーポン', lat:0, lng:0, gold_amount:100, is_active:true, shop_name:'', shop_photo:'', shop_url:'', shop_tel:'', description:'', unlock_mode:'gps', appear_radius:50, qr_code:'', reward_type:'gold', reward_name:'', reward_image_url:'', reward_description:'', reward_gold:0, open_limit:'once' };
 
 export default function AdminPage({ onClose }: { onClose: () => void }) {
   const [chests, setChests] = useState<Chest[]>([]);
@@ -85,7 +86,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
     const qrValue = selected.unlock_mode === 'qr' && !selected.qr_code
   ? `TREASURE_${selected.id ?? Date.now()}`
   : selected.qr_code;
-  const payload = { name:selected.name, type:selected.type, lat:selected.lat, lng:selected.lng, gold_amount:selected.gold_amount, is_active:selected.is_active, shop_name:selected.shop_name, shop_photo:selected.shop_photo, shop_url:selected.shop_url, shop_tel:selected.shop_tel, description:selected.description, unlock_mode:selected.unlock_mode, appear_radius:selected.appear_radius, qr_code:qrValue, reward_type:selected.reward_type, reward_name:selected.reward_name, reward_image_url:selected.reward_image_url, reward_description:selected.reward_description, reward_gold:selected.reward_gold };
+  const payload = { name:selected.name, type:selected.type, lat:selected.lat, lng:selected.lng, gold_amount:selected.gold_amount, is_active:selected.is_active, shop_name:selected.shop_name, shop_photo:selected.shop_photo, shop_url:selected.shop_url, shop_tel:selected.shop_tel, description:selected.description, unlock_mode:selected.unlock_mode, appear_radius:selected.appear_radius, qr_code:qrValue, reward_type:selected.reward_type, reward_name:selected.reward_name, reward_image_url:selected.reward_image_url, reward_description:selected.reward_description, reward_gold:selected.reward_gold, open_limit:selected.open_limit };
     const { error } = selected.id
       ? await supabase.from('chests').update(payload).eq('id', selected.id)
       : await supabase.from('chests').insert(payload);
@@ -251,7 +252,39 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
                     <label style={lbl}>📝 中身の説明<input value={selected.reward_description} onChange={e => setSelected({...selected, reward_description:e.target.value})} placeholder="例：次回来店時に使える10%オフ" style={inp} /></label>
                   </>
                 )}
-                <label style={lbl}>ゴール量（追加ボーナス）<input type="number" value={selected.gold_amount} onChange={e => setSelected({...selected, gold_amount:Number(e.target.value)})} style={inp} /></label>
+                <label style={lbl}>ゴールド量（追加ボーナス）<input type="number" value={selected.gold_amount} onChange={e => setSelected({...selected, gold_amount:Number(e.target.value)})} style={inp} /></label>
+
+<div style={{ borderTop:'1px solid rgba(255,255,255,0.1)', paddingTop:10, fontSize:12, color:'#ffd700' }}>🔒 開封制限</div>
+<label style={lbl}>制限タイプ
+  <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:4 }}>
+    {([
+      ['once',      '🔒 永久1回のみ（NFT・エピックアイテム）'],
+      ['daily',     '🔄 24時間ごとにリセット（クーポン等）'],
+      ['unlimited', '♾️ 制限なし（テスト用）'],
+    ] as const).map(([val, label]) => (
+      <button key={val} onClick={() => setSelected({...selected, open_limit:val})}
+        style={{ padding:'8px 10px', border:`2px solid ${selected.open_limit===val?'#ffd700':'rgba(255,255,255,0.1)'}`, background:selected.open_limit===val?'rgba(255,215,0,0.15)':'transparent', color:'#e8d5a3', borderRadius:8, cursor:'pointer', fontSize:12, textAlign:'left' }}>
+        {label}
+      </button>
+    ))}
+  </div>
+</label>
+
+                <div style={{ borderTop:'1px solid rgba(255,255,255,0.1)', paddingTop:10, fontSize:12, color:'#ffd700' }}>🔒 開封制限</div>
+                <label style={lbl}>制限タイプ
+                  <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:4 }}>
+                    {([
+                      ['once',      '🔒 永久1回のみ（NFT・エピックアイテム）'],
+                      ['daily',     '🔄 24時間ごとにリセット（クーポン等）'],
+                      ['unlimited', '♾️ 制限なし（テスト用）'],
+                    ] as const).map(([val, label]) => (
+                      <button key={val} onClick={() => setSelected({...selected, open_limit:val})}
+                        style={{ padding:'8px 10px', border:`2px solid ${selected.open_limit===val?'#ffd700':'rgba(255,255,255,0.1)'}`, background:selected.open_limit===val?'rgba(255,215,0,0.15)':'transparent', color:'#e8d5a3', borderRadius:8, cursor:'pointer', fontSize:12, textAlign:'left' }}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </label>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <div onClick={() => setSelected({...selected, is_active:!selected.is_active})}
                     style={{ width:44, height:24, borderRadius:12, background:selected.is_active?'#4CAF50':'#555', position:'relative', cursor:'pointer', flexShrink:0 }}>
