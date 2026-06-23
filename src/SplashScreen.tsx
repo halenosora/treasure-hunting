@@ -63,7 +63,7 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
           src="/images/NEXARAlogo.png"
           alt="NEXARA"
           style={{
-            width:280, height:'auto',
+            width:340, height:'auto',
             animation:'logoFloat 3s ease-in-out 1.5s infinite, logoGlow 2s ease-in-out 1.5s infinite',
           }}
         />

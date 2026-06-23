@@ -356,7 +356,7 @@ useEffect(() => {
       {/* ── ヘッダー ── */}
       <header className="title-bar">
         <div className="title-bar__left">
-          <h1 className="title-bar__heading">たからさがし</h1>
+        <img src="/images/NEXARAlogo.png" alt="NEXARA" style={{ height:32, width:'auto', filter:'drop-shadow(0 0 6px rgba(232,184,75,0.5))' }}/>
           {profile && <span className="title-bar__username">⚔️ {profile.username}</span>}
         </div>
         <div className="title-bar__right">
