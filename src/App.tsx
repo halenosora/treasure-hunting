@@ -136,6 +136,35 @@ useEffect(() => {
 
   // GPS
   const [playerPos,   setPlayerPos]   = useState<[number, number] | null>(null);
+  const [openedChestIds, setOpenedChestIds] = useState<Set<string>>( new Set());
+
+  // 開封済み宝箱を取得
+  useEffect(() => {
+    if (!user) return;
+    const fetchOpened = async () => {
+      const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data } = await supabase
+        .from('chest_logs')
+        .select('chest_id, chests(open_limit)')
+        .eq('user_id', user.id);
+      if (data) {
+        const ids = new Set<string>();
+        data.forEach((log: any) => {
+          if (!log.chest_id) return;
+          const limit = log.chests?.open_limit ?? 'once';
+          if (limit === 'once') {
+            ids.add(String(log.chest_id));
+          } else if (limit === 'daily') {
+            if (log.obtained_at > since24h) {
+              ids.add(String(log.chest_id));
+            }
+          }
+        });
+        setOpenedChestIds(ids);
+      }
+    };
+    fetchOpened();
+  }, [user]);
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY ?? '',
@@ -418,8 +447,8 @@ useEffect(() => {
                 </div>
               </OverlayView>
 
-              {/* 宝箱マーカー */}
-              {treasures.map((t) => {
+              {/* 宝箱マーカー（開封済みは非表示） */}
+              {treasures.filter(t => !openedChestIds.has(String(t.id))).map((t) => {
                 const cfg = TREASURE_CONFIG[t.type];
                 const color = cfg.color;
                 return (
