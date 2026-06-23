@@ -8,18 +8,18 @@ export default function VRoidCallback() {
     if (!code) return;
 
     // アクセストークンを取得
-    fetch('https://hub.vroid.com/oauth/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        client_id: process.env.REACT_APP_VROID_CLIENT_ID ?? '',
-        code,
-        redirect_uri: `${window.location.origin}/vroid-callback`,
-      }),
-    })
-      .then(r => r.json())
-      .then(async token => {
+    fetch('https://exwzquyxfenoguytiren.supabase.co/functions/v1/vroid-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          code_verifier: codeVerifier,
+          redirect_uri: redirectUri,
+          client_id: clientId,
+        }),
+      })
+        .then(r => r.json())
+        .then(async token => {
         // モデル一覧を取得
         const res = await fetch('https://hub.vroid.com/api/v1/account/character_models', {
           headers: { Authorization: `Bearer ${token.access_token}` },
