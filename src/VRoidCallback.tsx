@@ -45,8 +45,10 @@ export default function VRoidCallback() {
         }
 
         setStatus('アバター情報を取得中...');
-        const res = await fetch('https://hub.vroid.com/api/v1/account/character_models', {
-          headers: { Authorization: `Bearer ${token.access_token}` },
+        const res = await fetch('https://exwzquyxfenoguytiren.supabase.co/functions/v1/vroid-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'get_models', access_token: token.access_token }),
         });
         const models = await res.json();
         console.log('Models:', models);
