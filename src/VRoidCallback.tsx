@@ -53,7 +53,8 @@ export default function VRoidCallback() {
         const models = await res.json();
         console.log('Models:', models);
 
-        const firstModel = models.character_models?.[0];
+        console.log('Models detail:', JSON.stringify(models));
+        const firstModel = models.character_models?.[0] ?? models.data?.[0];
         if (firstModel) {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
