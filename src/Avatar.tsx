@@ -189,7 +189,7 @@ export default function Avatar({ onClose }: AvatarProps) {
               </div>
             ) : (
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                {filteredItems.map(item => {
+                {sortedWearableItems.map(item => {
                   const isEquipped = equipped[item.category as ItemCategory]?.id === item.id;
                   return (
                     <div key={item.id} onClick={() => setEquipped(p => ({...p, [item.category]:item}))} style={{ padding:12, background:isEquipped?'rgba(232,184,75,0.1)':'rgba(255,255,255,0.04)', border:`1px solid ${isEquipped?'#e8b84b':'rgba(255,255,255,0.08)'}`, borderRadius:10, cursor:'pointer', textAlign:'center', position:'relative' }}>
