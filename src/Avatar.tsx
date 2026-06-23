@@ -94,10 +94,39 @@ export default function Avatar({ onClose }: AvatarProps) {
 
         {/* VRoid連携ボタン */}
         <button
-          onClick={() => {
+          onClick={async () => {
             const clientId = process.env.REACT_APP_VROID_CLIENT_ID;
-            const redirectUri = encodeURIComponent(`${window.location.origin}/vroid-callback`);
-            window.location.href = `https://hub.vroid.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=default`;
+            const redirectUri = `${window.location.origin}/vroid-callback`;
+
+            const array = new Uint8Array(32);
+            crypto.getRandomValues(array);
+            const codeVerifier = btoa(Array.from(array, b => String.fromCharCode(b)).join(''))
+              .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+            const encoder = new TextEncoder();
+            const data = encoder.encode(codeVerifier);
+            const digest = await crypto.subtle.digest('SHA-256', data);
+            const codeChallenge = btoa(Array.from(new Uint8Array(digest), b => String.fromCharCode(b)).join(''))
+              .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+            const stateArray = new Uint8Array(16);
+            crypto.getRandomValues(stateArray);
+            const state = btoa(Array.from(stateArray, b => String.fromCharCode(b)).join(''))
+              .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+            sessionStorage.setItem('vroid_code_verifier', codeVerifier);
+            sessionStorage.setItem('vroid_state', state);
+
+            const params = new URLSearchParams({
+              client_id: clientId ?? '',
+              redirect_uri: redirectUri,
+              response_type: 'code',
+              scope: 'default',
+              state,
+              code_challenge: codeChallenge,
+              code_challenge_method: 'S256',
+            });
+            window.location.href = `https://hub.vroid.com/oauth/authorize?${params}`;
           }}
           style={{ width:'100%', marginTop:10, padding:'8px', background:'rgba(100,149,237,0.1)', border:'1px solid rgba(100,149,237,0.3)', borderRadius:8, color:'#6495ed', cursor:'pointer', fontSize:12, fontFamily:'sans-serif', letterSpacing:1 }}
         >
