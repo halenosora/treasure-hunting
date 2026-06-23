@@ -42,8 +42,8 @@ interface RewardResult {
 }
 
 // ── 定数 ────────────────────────────────────────────────────
-const DEFAULT_CENTER: [number, number] = [34.6873, 135.5262];
-const MIN_ZOOM = 15;
+const DEFAULT_CENTER: [number, number] | null = null;
+const MIN_ZOOM = 3;
 const DEFAULT_ZOOM = 15;
 
 const TREASURE_CONFIG: Record<TreasureType, {
@@ -66,59 +66,38 @@ const navItems: { key: NavItem; label: string }[] = [
 // ── ユーティリティ ───────────────────────────────────────────
 function createTreasureIcon(type: TreasureType, selected = false): L.DivIcon {
   const cfg = TREASURE_CONFIG[type];
-  const s = selected ? 52 : 40;
-  const pulseAnim = selected ? `
-    <div style="
-      position:absolute;top:50%;left:50%;
-      transform:translate(-50%,-50%);
-      width:${s * 2}px;height:${s * 2}px;
-      border-radius:50%;
-      background:${cfg.color}22;
-      animation:chestPulse 1.5s ease-out infinite;
-    "></div>
-    <div style="
-      position:absolute;top:50%;left:50%;
-      transform:translate(-50%,-50%);
-      width:${s * 1.4}px;height:${s * 1.4}px;
-      border-radius:50%;
-      border:1px solid ${cfg.color}66;
-      animation:chestPulse 1.5s ease-out infinite 0.5s;
-    "></div>` : '';
+  const size = selected ? 56 : 44;
+  const color = cfg.color;
+  const duration = type === 'レジェンド' ? '1.5s' : '2s';
+
   return L.divIcon({
     className: '',
     html: `
-      <div style="position:relative;width:${s}px;height:${s}px;">
-        ${pulseAnim}
-        <div style="
-          position:absolute;top:50%;left:50%;
-          transform:translate(-50%,-50%);
-          width:${s}px;height:${s}px;
-          border-radius:50%;
-          background:radial-gradient(circle at 35% 35%, ${cfg.color}ff, ${cfg.color}66);
-          border:2px solid ${cfg.color};
-          box-shadow:0 0 ${selected ? 24 : 12}px ${cfg.color}99,
-                     0 0 ${selected ? 48 : 24}px ${cfg.color}44;
-          display:flex;align-items:center;justify-content:center;
-        ">
-          <div style="
-            width:${s * 0.38}px;height:${s * 0.38}px;
-            border-radius:50%;
-            background:white;
-            opacity:0.85;
-            box-shadow:0 0 8px white;
-          "></div>
-        </div>
+      <div style="position:relative;width:${size}px;height:${size+20}px;display:flex;flex-direction:column;align-items:center;">
+        <!-- リング1 -->
+        <div style="position:absolute;top:${size/2}px;left:50%;transform:translate(-50%,-50%);width:${size}px;height:${size}px;border-radius:50%;border:1.5px solid ${color};opacity:0;animation:ingressRing ${duration} ease-out infinite;"></div>
+        <!-- リング2 -->
+        <div style="position:absolute;top:${size/2}px;left:50%;transform:translate(-50%,-50%);width:${size*0.7}px;height:${size*0.7}px;border-radius:50%;border:1px solid ${color};opacity:0;animation:ingressRing ${duration} ease-out ${parseFloat(duration)*0.4}s infinite;"></div>
+        <!-- ビーム -->
+        <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:2px;height:${size*0.7}px;background:linear-gradient(to top,${color},transparent);animation:ingressBeam ${duration} ease-in-out infinite;"></div>
+        <!-- コア -->
+        <div style="position:absolute;top:${size/2}px;left:50%;transform:translate(-50%,-50%);width:${selected?16:12}px;height:${selected?16:12}px;border-radius:50%;background:radial-gradient(circle,#ffffff,${color});box-shadow:0 0 ${selected?20:12}px ${color},0 0 ${selected?40:24}px ${color}66;animation:ingressCore ${duration} ease-in-out infinite;"></div>
+        <!-- パーティクル -->
+        <div style="position:absolute;top:${size/2-10}px;left:${size/2-8}px;width:3px;height:3px;border-radius:50%;background:${color};animation:ingressParticle ${duration} ease-out 0.2s infinite;"></div>
+        <div style="position:absolute;top:${size/2-8}px;left:${size/2+6}px;width:2px;height:2px;border-radius:50%;background:${color};animation:ingressParticle ${duration} ease-out 0.8s infinite;"></div>
+        <div style="position:absolute;top:${size/2-14}px;left:${size/2}px;width:3px;height:3px;border-radius:50%;background:${color};animation:ingressParticle ${duration} ease-out 1.4s infinite;"></div>
       </div>
       <style>
-        @keyframes chestPulse {
-          0%{transform:translate(-50%,-50%) scale(0.8);opacity:0.8}
-          100%{transform:translate(-50%,-50%) scale(1.8);opacity:0}
-        }
-      </style>`,
-    iconSize: [s, s], iconAnchor: [s / 2, s / 2],
+        @keyframes ingressRing{0%{transform:translate(-50%,-50%) scale(0.3);opacity:0.8}100%{transform:translate(-50%,-50%) scale(2.2);opacity:0}}
+        @keyframes ingressBeam{0%,100%{opacity:0.2;height:${size*0.6}px}50%{opacity:0.5;height:${size*0.9}px}}
+        @keyframes ingressCore{0%,100%{opacity:0.7;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}}
+        @keyframes ingressParticle{0%{transform:translateY(0) scale(1);opacity:0.8}100%{transform:translateY(-30px) scale(0);opacity:0}}
+      </style>
+    `,
+    iconSize: [size, size + 20],
+    iconAnchor: [size / 2, size / 2],
   });
 }
-
 function createPlayerIcon(): L.DivIcon {
   return L.divIcon({
     className: '',
@@ -126,7 +105,6 @@ function createPlayerIcon(): L.DivIcon {
     iconSize: [40, 40], iconAnchor: [20, 20],
   });
 }
-
 function calcDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -268,7 +246,7 @@ useEffect(() => {
   }, []);
 
   // ── 計算 ───────────────────────────────────────────────────
-  const mapCenter = playerPos ?? DEFAULT_CENTER;
+  const mapCenter = playerPos ?? [35.6762, 139.6503] as [number, number];
 
   const treasuresWithDist = useMemo(() =>
     treasures.map((t) => ({
@@ -437,14 +415,23 @@ useEffect(() => {
 
         {/* 地図 */}
         <section className="map-area" aria-label="地図" style={{ display: activeNav === 'map' ? 'block' : 'none', position:'absolute', inset:0 }}>
-          <MapContainer center={mapCenter} zoom={DEFAULT_ZOOM} minZoom={MIN_ZOOM} maxZoom={19} scrollWheelZoom style={{ width:'100%', height:'100%' }}>
-            <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <MapController center={playerPos} northUp heading={0} active={activeNav === 'map'} />
-            {playerPos && <Marker position={playerPos} icon={createPlayerIcon()}><Popup>現在地</Popup></Marker>}
-            {treasures.map((t) => (
-              <Marker key={t.id} position={[t.lat, t.lng]} icon={createTreasureIcon(t.type)} eventHandlers={{ click: () => setSelectedChest(t) }} />
-            ))}
-          </MapContainer>
+          {!playerPos && (
+            <div style={{ position:'absolute', inset:0, background:'#0a0e1a', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', zIndex:1000, gap:16 }}>
+              <div style={{ width:40, height:40, border:'3px solid rgba(232,184,75,0.2)', borderTopColor:'#e8b84b', borderRadius:'50%', animation:'spin 1s linear infinite' }}/>
+              <p style={{ color:'rgba(232,184,75,0.7)', fontSize:14 }}>📍 現在地を取得中...</p>
+              <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+            </div>
+          )}
+          {playerPos && (
+            <MapContainer center={playerPos} zoom={DEFAULT_ZOOM} minZoom={MIN_ZOOM} maxZoom={19} scrollWheelZoom style={{ width:'100%', height:'100%' }}>
+              <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <MapController center={playerPos} northUp heading={0} active={activeNav === 'map'} />
+              <Marker position={playerPos} icon={createPlayerIcon()}><Popup>現在地</Popup></Marker>
+              {treasures.map((t) => (
+                <Marker key={t.id} position={[t.lat, t.lng]} icon={createTreasureIcon(t.type)} eventHandlers={{ click: () => setSelectedChest(t) }} />
+              ))}
+            </MapContainer>
+          )}
         </section>
 
         {/* マイページ */}
