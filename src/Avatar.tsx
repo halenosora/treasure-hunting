@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './supabase';
 import { RARITY_COLORS, WEARABLE_CATEGORIES, Item, ItemCategory } from './items';
 import './Avatar.css';
@@ -13,8 +13,9 @@ const MENU_ITEMS = [
   { id: 'setting',  icon: '⚙️', label: '設定' },
 ];
 
+// ✅ TERRAHUNT → NEXARA に修正
 const NOTICES = [
-  { id:1, title:'TERRAHUNTへようこそ！', body:'宝箱を探して冒険を始めよう！', date:'2026-06-22', isNew:true },
+  { id:1, title:'NEXARAへようこそ！', body:'宝箱を探して冒険を始めよう！', date:'2026-06-22', isNew:true },
   { id:2, title:'新エリア追加のお知らせ', body:'横浜エリアに新しい宝箱が追加されました。', date:'2026-06-20', isNew:true },
   { id:3, title:'メンテナンス完了', body:'システムメンテナンスが完了しました。', date:'2026-06-18', isNew:false },
 ];
@@ -27,6 +28,16 @@ const MISSIONS = [
   { id:5, title:'ランキング入り',    desc:'ランキングトップ10に入る', reward:2000, progress:0, total:1,  done:false },
 ];
 
+// ── タップリアクションの種類 ──────────────────────────────────
+type Reaction = 'none' | 'wave' | 'jump' | 'spin' | 'heart';
+
+const REACTIONS: { type: Reaction; label: string; emoji: string }[] = [
+  { type: 'wave',  label: 'バイバイ', emoji: '👋' },
+  { type: 'jump',  label: 'ジャンプ', emoji: '⬆️' },
+  { type: 'spin',  label: '回転',     emoji: '🌀' },
+  { type: 'heart', label: 'ハート',   emoji: '❤️' },
+];
+
 export default function Avatar({ onClose }: AvatarProps) {
   const [tab, setTab]         = useState('notice');
   const [profile, setProfile] = useState<any>(null);
@@ -35,6 +46,15 @@ export default function Avatar({ onClose }: AvatarProps) {
   const [activeCategory, setActiveCategory] = useState<ItemCategory>('帽子');
   const [saving, setSaving]   = useState(false);
   const [noticeOpen, setNoticeOpen] = useState<number | null>(null);
+
+  // ── アバター操作用のstate ───────────────────────────────────
+  const [reaction, setReaction]       = useState<Reaction>('none');
+  const [isDragging, setIsDragging]   = useState(false);
+  const [rotateY, setRotateY]         = useState(0);       // 左右回転角度（度）
+  const [showEmoji, setShowEmoji]     = useState('');      // タップ時に出るエフェクト絵文字
+  const dragStartX  = useRef(0);                           // ドラッグ開始X座標
+  const dragStartRot = useRef(0);                          // ドラッグ開始時の回転角度
+  const reactionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -46,6 +66,65 @@ export default function Avatar({ onClose }: AvatarProps) {
     });
   }, []);
 
+  // ── アバタータップ・ドラッグ操作 ───────────────────────────
+
+  // 左右にドラッグして回転させる処理
+  const handleDragStart = (clientX: number) => {
+    setIsDragging(true);
+    dragStartX.current   = clientX;
+    dragStartRot.current = rotateY;
+  };
+
+  const handleDragMove = (clientX: number) => {
+    if (!isDragging) return;
+    const diff = clientX - dragStartX.current;
+    // 1px動かすと1度回転（好みで調整可能）
+    setRotateY(dragStartRot.current + diff);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  // タップでリアクションボタンを押したとき
+  const triggerReaction = (type: Reaction) => {
+    // 前のタイマーをリセット
+    if (reactionTimer.current) clearTimeout(reactionTimer.current);
+
+    setReaction(type);
+
+    // リアクション絵文字エフェクト
+    const emojiMap: Record<Reaction, string> = {
+      wave: '👋', jump: '⭐', spin: '✨', heart: '❤️', none: '',
+    };
+    setShowEmoji(emojiMap[type]);
+
+    // 2秒後に元に戻す
+    reactionTimer.current = setTimeout(() => {
+      setReaction('none');
+      setShowEmoji('');
+    }, 2000);
+  };
+
+  // アバター画像をタップしたときもリアクション（ランダム）
+  const handleAvatarTap = () => {
+    if (isDragging) return; // ドラッグ中はタップ無視
+    const types: Reaction[] = ['wave', 'jump', 'spin', 'heart'];
+    const random = types[Math.floor(Math.random() * types.length)];
+    triggerReaction(random);
+  };
+
+  // リアクションに応じたCSSアニメーション名を返す
+  const getAvatarAnimation = (): string => {
+    switch (reaction) {
+      case 'wave':  return 'avatarWave 0.5s ease-in-out 4';
+      case 'jump':  return 'avatarJump 0.5s ease-in-out 3';
+      case 'spin':  return 'avatarSpin 0.6s ease-in-out 3';
+      case 'heart': return 'avatarHeart 0.4s ease-in-out 4';
+      default:      return 'floatAv 3s ease-in-out infinite';
+    }
+  };
+
   const wearableItems = items.filter(i => WEARABLE_CATEGORIES.includes(i.category as ItemCategory));
   const filteredItems = wearableItems.filter(i => i.category === activeCategory);
 
@@ -54,8 +133,6 @@ export default function Avatar({ onClose }: AvatarProps) {
     await new Promise(r => setTimeout(r, 800));
     setSaving(false);
   }
-
-  const s = (style: React.CSSProperties) => style;
 
   return (
     <div style={{ position:'absolute', inset:0, background:'#0a0e1a', display:'flex', flexDirection:'column', overflow:'hidden', fontFamily:'sans-serif', color:'#e8d5a3' }}>
@@ -66,22 +143,78 @@ export default function Avatar({ onClose }: AvatarProps) {
         <div style={{ fontSize:18, color:'#e8b84b', fontFamily:'Georgia,serif', letterSpacing:2 }}>マイページ</div>
       </div>
 
-      {/* プロフィールカード */}
+      {/* ── プロフィールカード ── */}
       <div style={{ background:'linear-gradient(135deg,#0f1628,#1a0a2e)', borderBottom:'1px solid rgba(232,184,75,0.1)', flexShrink:0 }}>
-        {/* 全身アバター表示エリア */}
-        <div style={{ position:'relative', height:280, display:'flex', alignItems:'flex-end', justifyContent:'center', overflow:'hidden' }}>
-          <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at center bottom,rgba(232,184,75,0.1) 0%,transparent 70%)' }}/>
-          {profile?.vroid_full_body_url ? (
-            <img src={profile.vroid_full_body_url} alt="avatar" style={{ height:'100%', width:'auto', objectFit:'contain', animation:'floatAv 3s ease-in-out infinite', filter:'drop-shadow(0 8px 20px rgba(232,184,75,0.3))' }}/>
-          ) : profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="avatar" style={{ height:'100%', width:'auto', objectFit:'contain', animation:'floatAv 3s ease-in-out infinite', filter:'drop-shadow(0 8px 20px rgba(232,184,75,0.3))' }}/>
+
+        {/* ✅ 全身アバター表示エリア（背景透過・サイズ拡大・操作対応） */}
+        <div
+          style={{ position:'relative', height:380, display:'flex', alignItems:'flex-end', justifyContent:'center', overflow:'hidden', cursor: isDragging ? 'grabbing' : 'grab' }}
+          // マウス操作（PC）
+          onMouseDown={e => handleDragStart(e.clientX)}
+          onMouseMove={e => handleDragMove(e.clientX)}
+          onMouseUp={handleDragEnd}
+          onMouseLeave={handleDragEnd}
+          // タッチ操作（スマホ）
+          onTouchStart={e => handleDragStart(e.touches[0].clientX)}
+          onTouchMove={e => handleDragMove(e.touches[0].clientX)}
+          onTouchEnd={handleDragEnd}
+        >
+          {/* 背景グラデーション（薄め） */}
+          <div style={{ position:'absolute', inset:0, background:'radial-gradient(ellipse at center bottom,rgba(232,184,75,0.08) 0%,transparent 70%)' }}/>
+
+          {/* 地面の円形グロー */}
+          <div style={{ position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)', width:200, height:30, background:'radial-gradient(ellipse,rgba(232,184,75,0.15) 0%,transparent 70%)', borderRadius:'50%' }}/>
+
+          {/* ✅ アバター本体（背景透過・回転・リアクション対応） */}
+          {(profile?.vroid_full_body_url || profile?.avatar_url) ? (
+            <div
+              style={{ position:'relative', height:'95%', display:'flex', alignItems:'flex-end', justifyContent:'center' }}
+              onClick={handleAvatarTap}
+            >
+              <img
+                src={profile.vroid_full_body_url || profile.avatar_url}
+                alt="avatar"
+                draggable={false} // ドラッグで画像が動かないようにする
+                style={{
+                  height:'100%',
+                  width:'auto',
+                  objectFit:'contain',
+                  // ✅ 回転（左右ドラッグ）＋リアクションアニメーション
+                  transform:`rotateY(${rotateY}deg)`,
+                  transformStyle:'preserve-3d',
+                  animation: getAvatarAnimation(),
+                  filter:'drop-shadow(0 12px 30px rgba(232,184,75,0.35))',
+                  // ✅ 背景透過（mix-blend-modeで白背景を消す）
+                  mixBlendMode:'multiply',
+                  transition: isDragging ? 'none' : 'transform 0.1s',
+                  userSelect:'none',
+                  WebkitUserSelect:'none',
+                }}
+              />
+
+              {/* タップ時のエフェクト絵文字 */}
+              {showEmoji && (
+                <div style={{ position:'absolute', top:20, left:'50%', transform:'translateX(-50%)', fontSize:40, animation:'emojiPop 2s ease-out forwards', pointerEvents:'none', zIndex:10 }}>
+                  {showEmoji}
+                </div>
+              )}
+            </div>
           ) : (
-            <div style={{ fontSize:100, animation:'floatAv 3s ease-in-out infinite' }}>👤</div>
+            <div
+              style={{ fontSize:120, animation:getAvatarAnimation(), cursor:'pointer' }}
+              onClick={handleAvatarTap}
+            >
+              👤
+            </div>
           )}
-          <div style={{ position:'absolute', top:12, right:12, background:'#e8b84b', color:'#1a0e00', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20 }}>
+
+          {/* レベルバッジ */}
+          <div style={{ position:'absolute', top:12, right:12, background:'#e8b84b', color:'#1a0e00', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20, zIndex:5 }}>
             Lv.{profile?.adventure_level ?? 1}
           </div>
-          <div style={{ position:'absolute', top:12, left:12 }}>
+
+          {/* VRoid変更ボタン */}
+          <div style={{ position:'absolute', top:12, left:12, zIndex:5 }}>
             <button
               onClick={async () => {
                 const clientId = process.env.REACT_APP_VROID_CLIENT_ID;
@@ -104,7 +237,39 @@ export default function Avatar({ onClose }: AvatarProps) {
               style={{ padding:'6px 12px', background:'rgba(100,149,237,0.15)', border:'1px solid rgba(100,149,237,0.4)', borderRadius:20, color:'#6495ed', cursor:'pointer', fontSize:10, fontFamily:'sans-serif' }}
             >🎭 VRoid変更</button>
           </div>
+
+          {/* 操作ヒント */}
+          <div style={{ position:'absolute', bottom:8, left:'50%', transform:'translateX(-50%)', fontSize:10, color:'rgba(255,255,255,0.3)', whiteSpace:'nowrap', pointerEvents:'none' }}>
+            ← 左右にスワイプで回転 | タップでリアクション →
+          </div>
         </div>
+
+        {/* ✅ リアクションボタン一覧 */}
+        <div style={{ display:'flex', justifyContent:'center', gap:10, padding:'10px 16px 4px' }}>
+          {REACTIONS.map(r => (
+            <button
+              key={r.type}
+              onClick={() => triggerReaction(r.type)}
+              style={{
+                padding:'6px 14px',
+                background: reaction === r.type ? 'rgba(232,184,75,0.25)' : 'rgba(255,255,255,0.06)',
+                border:`1px solid ${reaction === r.type ? '#e8b84b' : 'rgba(255,255,255,0.12)'}`,
+                borderRadius:20,
+                color: reaction === r.type ? '#e8b84b' : 'rgba(255,255,255,0.6)',
+                cursor:'pointer',
+                fontSize:11,
+                display:'flex',
+                alignItems:'center',
+                gap:4,
+                transition:'all 0.2s',
+              }}
+            >
+              <span>{r.emoji}</span>
+              <span>{r.label}</span>
+            </button>
+          ))}
+        </div>
+
         {/* プロフィール情報 */}
         <div style={{ padding:'12px 16px' }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
@@ -118,9 +283,9 @@ export default function Avatar({ onClose }: AvatarProps) {
             </div>
           </div>
         </div>
-        
-        {/* ゴールドバー */}
-        <div style={{ marginTop:12 }}>
+
+        {/* 経験値バー */}
+        <div style={{ padding:'0 16px 12px' }}>
           <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'rgba(232,184,75,0.5)', marginBottom:4 }}>
             <span>次のレベルまで</span>
             <span>{Math.min(items.length * 10, 100)}%</span>
@@ -252,11 +417,11 @@ export default function Avatar({ onClose }: AvatarProps) {
               { label:'位置情報', desc:'GPS機能を有効にする' },
               { label:'サウンド', desc:'効果音・BGMのオン/オフ' },
               { label:'ダークモード', desc:'画面の表示モード' },
-            ].map((s, i) => (
+            ]].map((setting, i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                 <div>
-                  <div style={{ fontSize:14, color:'#e8d5a3' }}>{s.label}</div>
-                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{s.desc}</div>
+                  <div style={{ fontSize:14, color:'#e8d5a3' }}>{setting.label}</div>
+                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{setting.desc}</div>
                 </div>
                 <div style={{ width:44, height:24, borderRadius:12, background:'rgba(232,184,75,0.3)', position:'relative', cursor:'pointer' }}>
                   <div style={{ width:20, height:20, borderRadius:'50%', background:'#e8b84b', position:'absolute', top:2, right:2, transition:'left 0.2s' }}/>
@@ -274,8 +439,36 @@ export default function Avatar({ onClose }: AvatarProps) {
 
       </div>
 
+      {/* ── アニメーション定義 ── */}
       <style>{`
-        @keyframes floatAv { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+        @keyframes floatAv {
+          0%,100% { transform: translateY(0); }
+          50%      { transform: translateY(-6px); }
+        }
+        @keyframes avatarWave {
+          0%,100% { transform: rotate(0deg) translateY(0); }
+          25%      { transform: rotate(-8deg) translateY(-4px); }
+          75%      { transform: rotate(8deg)  translateY(-4px); }
+        }
+        @keyframes avatarJump {
+          0%,100% { transform: translateY(0) scaleY(1); }
+          40%      { transform: translateY(-30px) scaleY(1.05); }
+          90%      { transform: translateY(4px) scaleY(0.95); }
+        }
+        @keyframes avatarSpin {
+          0%   { transform: rotateY(0deg); }
+          100% { transform: rotateY(360deg); }
+        }
+        @keyframes avatarHeart {
+          0%,100% { transform: scale(1); }
+          30%      { transform: scale(1.1); }
+          60%      { transform: scale(0.95); }
+        }
+        @keyframes emojiPop {
+          0%   { opacity:1; transform: translateX(-50%) translateY(0) scale(1); }
+          70%  { opacity:1; transform: translateX(-50%) translateY(-40px) scale(1.3); }
+          100% { opacity:0; transform: translateX(-50%) translateY(-70px) scale(0.8); }
+        }
       `}</style>
     </div>
   );
