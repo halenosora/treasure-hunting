@@ -174,13 +174,32 @@ export default function Avatar({ onClose }: AvatarProps) {
          {tab === 'avatar' && (
           <div style={{ padding:16 }}>
             <div style={{ fontSize:10, letterSpacing:3, color:'rgba(232,184,75,0.5)', marginBottom:12 }}>カテゴリー ────────────</div>
-            <div style={{ display:'flex', gap:6, overflowX:'auto', marginBottom:16, paddingBottom:4 }}>
-              {WEARABLE_CATEGORIES.map(cat => (
-                <button key={cat} onClick={() => setActiveCategory(cat)} style={{ flexShrink:0, padding:'6px 12px', background:activeCategory===cat?'rgba(232,184,75,0.15)':'rgba(255,255,255,0.04)', border:`1px solid ${activeCategory===cat?'#e8b84b':'rgba(255,255,255,0.1)'}`, borderRadius:20, color:activeCategory===cat?'#e8b84b':'#e8d5a3', cursor:'pointer', fontSize:12, whiteSpace:'nowrap' }}>
-                  {cat}{equipped[cat] && <span style={{ marginLeft:4, color:'#e8b84b' }}>●</span>}
+            <div style={{ display:'flex', gap:6, overflowX:'auto', marginBottom:10, paddingBottom:4 }}>
+              {['すべて', ...WEARABLE_CATEGORIES].map(cat => (
+                <button key={cat} onClick={() => setActiveCategory(cat as any)} style={{ flexShrink:0, padding:'6px 12px', background:activeCategory===cat?'rgba(232,184,75,0.15)':'rgba(255,255,255,0.04)', border:`1px solid ${activeCategory===cat?'#e8b84b':'rgba(255,255,255,0.1)'}`, borderRadius:20, color:activeCategory===cat?'#e8b84b':'#e8d5a3', cursor:'pointer', fontSize:12, whiteSpace:'nowrap' }}>
+                  {cat}{cat !== 'すべて' && equipped[cat as ItemCategory] && <span style={{ marginLeft:4, color:'#e8b84b' }}>●</span>}
                 </button>
               ))}
             </div>
+
+            {/* 並び替えバー */}
+            <div style={{ display:'flex', gap:6, marginBottom:14, overflowX:'auto' }}>
+              <span style={{ fontSize:11, color:'rgba(255,255,255,0.4)', alignSelf:'center', marginRight:4, flexShrink:0 }}>並び替え：</span>
+              {(['レア度', '名前', 'カテゴリ'] as const).map(key => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    if (avatarSortKey === key) setAvatarSortAsc(v => !v);
+                    else { setAvatarSortKey(key); setAvatarSortAsc(false); }
+                  }}
+                  style={{ flexShrink:0, padding:'4px 12px', background:avatarSortKey===key?'rgba(232,184,75,0.2)':'rgba(255,255,255,0.06)', border:`1px solid ${avatarSortKey===key?'#e8b84b':'rgba(255,255,255,0.1)'}`, borderRadius:20, color:avatarSortKey===key?'#e8b84b':'rgba(255,255,255,0.5)', cursor:'pointer', fontSize:11 }}
+                >
+                  {key} {avatarSortKey===key ? (avatarSortAsc ? '↑' : '↓') : ''}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display:'flex', gap:6, overflowX:'auto', marginBottom:16, paddingBottom:4 }}>
             {sortedWearableItems.length === 0 ? (
               <div style={{ textAlign:'center', padding:'40px 20px', opacity:0.4 }}>
                 <div style={{ fontSize:40, marginBottom:12 }}>🔒</div>
