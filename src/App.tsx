@@ -536,13 +536,20 @@ useEffect(() => {
             <button className="chest-detail-close" onClick={() => setSelectedChest(null)}>✕</button>
             <div style={{ display:'flex', justifyContent:'center', margin:'8px 0 16px' }}>
               <div style={{
-                width:64, height:64, borderRadius:'50%',
-                background:`radial-gradient(circle at 35% 35%, ${TREASURE_CONFIG[selectedChest.type].color}ff, ${TREASURE_CONFIG[selectedChest.type].color}66)`,
-                border:`2px solid ${TREASURE_CONFIG[selectedChest.type].color}`,
-                boxShadow:`0 0 24px ${TREASURE_CONFIG[selectedChest.type].color}99, 0 0 48px ${TREASURE_CONFIG[selectedChest.type].color}44`,
-                display:'flex', alignItems:'center', justifyContent:'center',
+                position:'relative', width:120, height:120,
+                filter:`drop-shadow(0 0 16px ${TREASURE_CONFIG[selectedChest.type].color}99)`,
+                animation:'chestFloat 3s ease-in-out infinite',
               }}>
-                <div style={{ width:24, height:24, borderRadius:'50%', background:'white', opacity:0.85, boxShadow:'0 0 8px white' }} />
+                <img
+                  src={`/images/chest_${
+                    selectedChest.type === '地域クーポン' ? 'green' :
+                    selectedChest.type === 'ゲームアイテム' ? 'blue' :
+                    selectedChest.type === 'スポンサード' ? 'gold' :
+                    selectedChest.type === '期間限定' ? 'purple' : 'red'
+                  }.png`}
+                  alt={selectedChest.type}
+                  style={{ width:'100%', height:'100%', objectFit:'contain' }}
+                />
               </div>
             </div>
             <h2 className="chest-detail-name">{selectedChest.name}</h2>
