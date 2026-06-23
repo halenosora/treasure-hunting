@@ -1,6 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
+import { GoogleMap, useJsApiLoader, OverlayView } from '@react-google-maps/api';
 import { supabase } from './supabase';
 import ARCamera from './ARCamera';
 import Avatar from './Avatar';
@@ -42,9 +41,8 @@ interface RewardResult {
 }
 
 // ── 定数 ────────────────────────────────────────────────────
-const DEFAULT_CENTER: [number, number] | null = null;
-const MIN_ZOOM = 3;
 const DEFAULT_ZOOM = 15;
+const MAP_LIBRARIES: ('places')[] = ['places'];
 
 const TREASURE_CONFIG: Record<TreasureType, {
   color: string; emoji: string; shape: string; label: string; items: string[];
@@ -64,47 +62,6 @@ const navItems: { key: NavItem; label: string }[] = [
 ];
 
 // ── ユーティリティ ───────────────────────────────────────────
-function createTreasureIcon(type: TreasureType, selected = false): L.DivIcon {
-  const cfg = TREASURE_CONFIG[type];
-  const size = selected ? 56 : 44;
-  const color = cfg.color;
-  const duration = type === 'レジェンド' ? '1.5s' : '2s';
-
-  return L.divIcon({
-    className: '',
-    html: `
-      <div style="position:relative;width:${size}px;height:${size+20}px;display:flex;flex-direction:column;align-items:center;">
-        <!-- リング1 -->
-        <div style="position:absolute;top:${size/2}px;left:50%;transform:translate(-50%,-50%);width:${size}px;height:${size}px;border-radius:50%;border:1.5px solid ${color};opacity:0;animation:ingressRing ${duration} ease-out infinite;"></div>
-        <!-- リング2 -->
-        <div style="position:absolute;top:${size/2}px;left:50%;transform:translate(-50%,-50%);width:${size*0.7}px;height:${size*0.7}px;border-radius:50%;border:1px solid ${color};opacity:0;animation:ingressRing ${duration} ease-out ${parseFloat(duration)*0.4}s infinite;"></div>
-        <!-- ビーム -->
-        <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:2px;height:${size*0.7}px;background:linear-gradient(to top,${color},transparent);animation:ingressBeam ${duration} ease-in-out infinite;"></div>
-        <!-- コア -->
-        <div style="position:absolute;top:${size/2}px;left:50%;transform:translate(-50%,-50%);width:${selected?16:12}px;height:${selected?16:12}px;border-radius:50%;background:radial-gradient(circle,#ffffff,${color});box-shadow:0 0 ${selected?20:12}px ${color},0 0 ${selected?40:24}px ${color}66;animation:ingressCore ${duration} ease-in-out infinite;"></div>
-        <!-- パーティクル -->
-        <div style="position:absolute;top:${size/2-10}px;left:${size/2-8}px;width:3px;height:3px;border-radius:50%;background:${color};animation:ingressParticle ${duration} ease-out 0.2s infinite;"></div>
-        <div style="position:absolute;top:${size/2-8}px;left:${size/2+6}px;width:2px;height:2px;border-radius:50%;background:${color};animation:ingressParticle ${duration} ease-out 0.8s infinite;"></div>
-        <div style="position:absolute;top:${size/2-14}px;left:${size/2}px;width:3px;height:3px;border-radius:50%;background:${color};animation:ingressParticle ${duration} ease-out 1.4s infinite;"></div>
-      </div>
-      <style>
-        @keyframes ingressRing{0%{transform:translate(-50%,-50%) scale(0.3);opacity:0.8}100%{transform:translate(-50%,-50%) scale(2.2);opacity:0}}
-        @keyframes ingressBeam{0%,100%{opacity:0.2;height:${size*0.6}px}50%{opacity:0.5;height:${size*0.9}px}}
-        @keyframes ingressCore{0%,100%{opacity:0.7;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}}
-        @keyframes ingressParticle{0%{transform:translateY(0) scale(1);opacity:0.8}100%{transform:translateY(-30px) scale(0);opacity:0}}
-      </style>
-    `,
-    iconSize: [size, size + 20],
-    iconAnchor: [size / 2, size / 2],
-  });
-}
-function createPlayerIcon(): L.DivIcon {
-  return L.divIcon({
-    className: '',
-    html: `<div class="player-marker"><div class="player-marker__ring"></div><div class="player-marker__dot"></div></div>`,
-    iconSize: [40, 40], iconAnchor: [20, 20],
-  });
-}
 function calcDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371000;
   const toRad = (d: number) => (d * Math.PI) / 180;
@@ -122,21 +79,6 @@ function randomGold(type: TreasureType): number {
     地域クーポン: 200, ゲームアイテム: 150, スポンサード: 500, 期間限定: 350, レジェンド: 1000,
   };
   return base[type] + Math.floor(Math.random() * 200);
-}
-
-// ── MapController ────────────────────────────────────────────
-function MapController({ center, active }: { center: [number, number] | null; northUp: boolean; heading: number; active: boolean }) {
-  const map = useMap();
-  const initializedRef = React.useRef(false);
-  useEffect(() => { map.setMinZoom(MIN_ZOOM); }, [map]);
-  useEffect(() => {
-    if (center && !initializedRef.current) {
-      map.setView(center, map.getZoom());
-      initializedRef.current = true;
-    }
-  }, [center, map]);
-  useEffect(() => { if (active) setTimeout(() => map.invalidateSize(), 50); }, [active, map]);
-  return null;
 }
 
 // ── App ──────────────────────────────────────────────────────
@@ -194,6 +136,25 @@ useEffect(() => {
 
   // GPS
   const [playerPos,   setPlayerPos]   = useState<[number, number] | null>(null);
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY ?? '',
+    libraries: MAP_LIBRARIES,
+  });
+
+  const mapRef = React.useRef<google.maps.Map | null>(null);
+  const centeredRef = React.useRef(false);
+
+  const onMapLoad = React.useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+  }, []);
+
+  React.useEffect(() => {
+    if (mapRef.current && playerPos && !centeredRef.current) {
+      mapRef.current.panTo({ lat: playerPos[0], lng: playerPos[1] });
+      centeredRef.current = true;
+    }
+  }, [playerPos]);
   const watchIdRef = useRef<number | null>(null);
 
   // 認証
@@ -422,15 +383,68 @@ useEffect(() => {
               <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
             </div>
           )}
-          {playerPos && (
-            <MapContainer center={playerPos} zoom={DEFAULT_ZOOM} minZoom={MIN_ZOOM} maxZoom={19} scrollWheelZoom style={{ width:'100%', height:'100%' }}>
-              <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <MapController center={playerPos} northUp heading={0} active={activeNav === 'map'} />
-              <Marker position={playerPos} icon={createPlayerIcon()}><Popup>現在地</Popup></Marker>
-              {treasures.map((t) => (
-                <Marker key={t.id} position={[t.lat, t.lng]} icon={createTreasureIcon(t.type)} eventHandlers={{ click: () => setSelectedChest(t) }} />
-              ))}
-            </MapContainer>
+          {playerPos && isLoaded && (
+            <GoogleMap
+              mapContainerStyle={{ width:'100%', height:'100%' }}
+              center={{ lat: playerPos[0], lng: playerPos[1] }}
+              zoom={DEFAULT_ZOOM}
+              onLoad={onMapLoad}
+              options={{
+                disableDefaultUI: false,
+                zoomControl: true,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: false,
+                styles: [
+                  { elementType:'geometry', stylers:[{ color:'#1a1a2e' }] },
+                  { elementType:'labels.text.stroke', stylers:[{ color:'#1a1a2e' }] },
+                  { elementType:'labels.text.fill', stylers:[{ color:'#746855' }] },
+                  { featureType:'road', elementType:'geometry', stylers:[{ color:'#2d2d44' }] },
+                  { featureType:'road', elementType:'geometry.stroke', stylers:[{ color:'#212121' }] },
+                  { featureType:'road', elementType:'labels.text.fill', stylers:[{ color:'#9ca5b3' }] },
+                  { featureType:'water', elementType:'geometry', stylers:[{ color:'#0e1626' }] },
+                  { featureType:'water', elementType:'labels.text.fill', stylers:[{ color:'#515c6d' }] },
+                  { featureType:'poi', elementType:'labels', stylers:[{ visibility:'off' }] },
+                  { featureType:'transit', stylers:[{ visibility:'off' }] },
+                ],
+              }}
+            >
+              {/* 現在地マーカー */}
+              <OverlayView
+                position={{ lat: playerPos[0], lng: playerPos[1] }}
+                mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+              >
+                <div className="player-marker">
+                  <div className="player-marker__ring"></div>
+                  <div className="player-marker__dot"></div>
+                </div>
+              </OverlayView>
+
+              {/* 宝箱マーカー */}
+              {treasures.map((t) => {
+                const cfg = TREASURE_CONFIG[t.type];
+                const color = cfg.color;
+                return (
+                  <OverlayView
+                    key={t.id}
+                    position={{ lat: t.lat, lng: t.lng }}
+                    mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+                  >
+                    <div
+                      onClick={() => setSelectedChest(t)}
+                      style={{ position:'relative', width:44, height:64, display:'flex', flexDirection:'column', alignItems:'center', cursor:'pointer', transform:'translate(-22px,-32px)' }}
+                    >
+                      <div style={{ position:'absolute', top:22, left:'50%', width:44, height:44, borderRadius:'50%', border:`1.5px solid ${color}`, opacity:0, animation:`ingressRing 2s ease-out infinite`, transform:'translate(-50%,-50%)' }}/>
+                      <div style={{ position:'absolute', top:22, left:'50%', width:30, height:30, borderRadius:'50%', border:`1px solid ${color}`, opacity:0, animation:`ingressRing 2s ease-out 0.6s infinite`, transform:'translate(-50%,-50%)' }}/>
+                      <div style={{ position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)', width:2, height:30, background:`linear-gradient(to top,${color},transparent)`, animation:'ingressBeam 2s ease-in-out infinite' }}/>
+                      <div style={{ position:'absolute', top:22, left:'50%', transform:'translate(-50%,-50%)', width:12, height:12, borderRadius:'50%', background:`radial-gradient(circle,#ffffff,${color})`, boxShadow:`0 0 12px ${color},0 0 24px ${color}66`, animation:'ingressCore 2s ease-in-out infinite' }}/>
+                      <div style={{ position:'absolute', top:8, left:14, width:3, height:3, borderRadius:'50%', background:color, animation:'ingressParticle 2s ease-out 0.2s infinite' }}/>
+                      <div style={{ position:'absolute', top:10, left:26, width:2, height:2, borderRadius:'50%', background:color, animation:'ingressParticle 2s ease-out 0.8s infinite' }}/>
+                    </div>
+                  </OverlayView>
+                );
+              })}
+            </GoogleMap>
           )}
         </section>
 
@@ -607,10 +621,15 @@ useEffect(() => {
         </div>
       )}
 
-      <style>{`
+<style>{`
         @keyframes compassSpin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @keyframes trophyShine { 0%,100%{opacity:0.3} 50%{opacity:1} }
         @keyframes packBounce  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
+        @keyframes ingressRing { 0%{transform:translate(-50%,-50%) scale(0.3);opacity:0.8} 100%{transform:translate(-50%,-50%) scale(2.2);opacity:0} }
+        @keyframes ingressBeam { 0%,100%{opacity:0.2} 50%{opacity:0.5} }
+        @keyframes ingressCore { 0%,100%{opacity:0.7;transform:translate(-50%,-50%) scale(1)} 50%{opacity:1;transform:translate(-50%,-50%) scale(1.2)} }
+        @keyframes ingressParticle { 0%{transform:translateY(0) scale(1);opacity:0.8} 100%{transform:translateY(-30px) scale(0);opacity:0} }
+        @keyframes spin { to{transform:rotate(360deg)} }
       `}</style>
 
     </div>
