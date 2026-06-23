@@ -22,6 +22,11 @@ interface Chest {
     unlock_mode: 'gps' | 'qr';
     appear_radius: number;
     qr_code: string;
+    reward_type: 'gold' | 'coupon' | 'avatar_item' | 'ticket' | 'nft';
+    reward_name: string;
+    reward_image_url: string;
+    reward_description: string;
+    reward_gold: number;
   }
 
 const TYPE_CONFIG: Record<ChestType, { color: string; emoji: string }> = {
@@ -50,7 +55,7 @@ function makeIcon(type: string, selected = false) {
   });
 }
 
-const EMPTY: Chest = { name:'', type:'地域クーポン', lat:0, lng:0, gold_amount:100, is_active:true, shop_name:'', shop_photo:'', shop_url:'', shop_tel:'', description:'', unlock_mode:'gps', appear_radius:50, qr_code:'' };
+const EMPTY: Chest = { name:'', type:'地域クーポン', lat:0, lng:0, gold_amount:100, is_active:true, shop_name:'', shop_photo:'', shop_url:'', shop_tel:'', description:'', unlock_mode:'gps', appear_radius:50, qr_code:'', reward_type:'gold', reward_name:'', reward_image_url:'', reward_description:'', reward_gold:0 };
 
 export default function AdminPage({ onClose }: { onClose: () => void }) {
   const [chests, setChests] = useState<Chest[]>([]);
@@ -80,7 +85,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
     const qrValue = selected.unlock_mode === 'qr' && !selected.qr_code
   ? `TREASURE_${selected.id ?? Date.now()}`
   : selected.qr_code;
-const payload = { name:selected.name, type:selected.type, lat:selected.lat, lng:selected.lng, gold_amount:selected.gold_amount, is_active:selected.is_active, shop_name:selected.shop_name, shop_photo:selected.shop_photo, shop_url:selected.shop_url, shop_tel:selected.shop_tel, description:selected.description, unlock_mode:selected.unlock_mode, appear_radius:selected.appear_radius, qr_code:qrValue };
+  const payload = { name:selected.name, type:selected.type, lat:selected.lat, lng:selected.lng, gold_amount:selected.gold_amount, is_active:selected.is_active, shop_name:selected.shop_name, shop_photo:selected.shop_photo, shop_url:selected.shop_url, shop_tel:selected.shop_tel, description:selected.description, unlock_mode:selected.unlock_mode, appear_radius:selected.appear_radius, qr_code:qrValue, reward_type:selected.reward_type, reward_name:selected.reward_name, reward_image_url:selected.reward_image_url, reward_description:selected.reward_description, reward_gold:selected.reward_gold };
     const { error } = selected.id
       ? await supabase.from('chests').update(payload).eq('id', selected.id)
       : await supabase.from('chests').insert(payload);
@@ -224,7 +229,29 @@ const payload = { name:selected.name, type:selected.type, lat:selected.lat, lng:
                   </div>
                 )}
                 <label style={lbl}>説明文<textarea value={selected.description} onChange={e => setSelected({...selected, description:e.target.value})} placeholder="宝箱の説明やヒントなど" rows={3} style={{...inp, resize:'vertical'}} /></label>
-                <label style={lbl}>ゴール量<input type="number" value={selected.gold_amount} onChange={e => setSelected({...selected, gold_amount:Number(e.target.value)})} style={inp} /></label>
+                <div style={{ borderTop:'1px solid rgba(255,255,255,0.1)', paddingTop:10, fontSize:12, color:'#ffd700' }}>🎁 中身設定</div>
+                <label style={lbl}>中身の種類
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, marginTop:4 }}>
+                    {([['gold','💰 ゴールド'],['coupon','🎫 クーポン'],['avatar_item','👒 アバター'],['ticket','🎟️ チケット'],['nft','⭐ NFT']] as const).map(([val, label]) => (
+                      <button key={val} onClick={() => setSelected({...selected, reward_type:val})}
+                        style={{ padding:'6px 4px', border:`2px solid ${selected.reward_type===val?'#ffd700':'rgba(255,255,255,0.1)'}`, background:selected.reward_type===val?'rgba(255,215,0,0.2)':'transparent', color:'#e8d5a3', borderRadius:8, cursor:'pointer', fontSize:11 }}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </label>
+                {selected.reward_type === 'gold' ? (
+                  <label style={lbl}>💰 ゴールド数<input type="number" value={selected.reward_gold} onChange={e => setSelected({...selected, reward_gold:Number(e.target.value)})} placeholder="例：500" style={inp} /></label>
+                ) : (
+                  <>
+                    <label style={lbl}>🎁 中身の名前<input value={selected.reward_name} onChange={e => setSelected({...selected, reward_name:e.target.value})} placeholder="例：飲食店10%オフクーポン" style={inp} /></label>
+                    <label style={lbl}>🖼️ 中身の画像URL<input value={selected.reward_image_url} onChange={e => setSelected({...selected, reward_image_url:e.target.value})} placeholder="https://..." style={inp} />
+                      {selected.reward_image_url && <img src={selected.reward_image_url} alt="preview" style={{ width:80, height:80, objectFit:'cover', borderRadius:8, marginTop:8 }}/>}
+                    </label>
+                    <label style={lbl}>📝 中身の説明<input value={selected.reward_description} onChange={e => setSelected({...selected, reward_description:e.target.value})} placeholder="例：次回来店時に使える10%オフ" style={inp} /></label>
+                  </>
+                )}
+                <label style={lbl}>ゴール量（追加ボーナス）<input type="number" value={selected.gold_amount} onChange={e => setSelected({...selected, gold_amount:Number(e.target.value)})} style={inp} /></label>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <div onClick={() => setSelected({...selected, is_active:!selected.is_active})}
                     style={{ width:44, height:24, borderRadius:12, background:selected.is_active?'#4CAF50':'#555', position:'relative', cursor:'pointer', flexShrink:0 }}>
