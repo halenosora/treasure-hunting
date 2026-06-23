@@ -16,10 +16,15 @@ serve(async (req) => {
 
     // モデル取得モード
     if (body.action === 'get_models') {
-      const response = await fetch('https://hub.vroid.com/api/v1/account/character_models', {
-        headers: { Authorization: `Bearer ${body.access_token}` },
+      const response = await fetch('https://hub.vroid.com/api/account/character_models?publication=all', {
+        headers: {
+          Authorization: `Bearer ${body.access_token}`,
+          'X-Api-Version': '11',
+          'Accept': 'application/json',
+        },
       })
       const data = await response.json()
+      console.log('Models response:', JSON.stringify(data))
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

@@ -54,12 +54,16 @@ export default function VRoidCallback() {
         console.log('Models:', models);
 
         console.log('Models detail:', JSON.stringify(models));
-        const firstModel = models.character_models?.[0] ?? models.data?.[0];
+        const firstModel = models.data?.[0];
         if (firstModel) {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
+            const avatarUrl = firstModel.portrait_image?.sq300?.url 
+              ?? firstModel.portrait_image?.sq600?.url 
+              ?? firstModel.full_body_image?.w300?.url
+              ?? '';
             await supabase.from('profiles').update({
-              avatar_url: firstModel.avatar_image?.square_url ?? '',
+              avatar_url: avatarUrl,
             }).eq('id', user.id);
             setStatus('連携完了！');
           }
