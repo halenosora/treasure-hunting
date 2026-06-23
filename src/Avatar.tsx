@@ -417,11 +417,11 @@ export default function Avatar({ onClose }: AvatarProps) {
               { label:'位置情報', desc:'GPS機能を有効にする' },
               { label:'サウンド', desc:'効果音・BGMのオン/オフ' },
               { label:'ダークモード', desc:'画面の表示モード' },
-            ]].map((setting, i) => (
+            ].map((s, i) => (
               <div key={i} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 0', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
                 <div>
-                  <div style={{ fontSize:14, color:'#e8d5a3' }}>{setting.label}</div>
-                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{setting.desc}</div>
+                <div style={{ fontSize:14, color:'#e8d5a3' }}>{s.label}</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{s.desc}</div>
                 </div>
                 <div style={{ width:44, height:24, borderRadius:12, background:'rgba(232,184,75,0.3)', position:'relative', cursor:'pointer' }}>
                   <div style={{ width:20, height:20, borderRadius:'50%', background:'#e8b84b', position:'absolute', top:2, right:2, transition:'left 0.2s' }}/>
